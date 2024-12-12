@@ -28,7 +28,7 @@ module.exports = {
         favicon: "./assets/favicon.png"
       },
       extra: {
-        clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
+        clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
       },
       scheme: "your-app-scheme"
     }
