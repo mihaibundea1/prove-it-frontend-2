@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
-import { useSignIn, useOAuth } from '@clerk/clerk-expo';
+import { useSignIn, useOAuth, useSession } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from '../../types/navigation';
 import * as WebBrowser from 'expo-web-browser';
@@ -19,12 +19,20 @@ export default function Login() {
   const navigation = useNavigation<NavigationProps>();
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { isLoaded: sessionLoaded, session } = useSession(); // Get session data
   
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [rememberMe, setRememberMe] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    // If the user is already signed in, navigate to the Home screen
+    if (sessionLoaded && session) {
+      navigation.navigate('Home');
+    }
+  }, [session, sessionLoaded, navigation]);
 
   const handleSignIn = async (): Promise<void> => {
     if (!isLoaded) return;
@@ -38,6 +46,7 @@ export default function Login() {
       });
 
       await setActive({ session: completeSignIn.createdSessionId });
+      navigation.navigate('Home');
       Alert.alert('Success', 'Logged in successfully!');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to sign in');
@@ -53,6 +62,7 @@ export default function Login() {
       
       if (createdSessionId) {
         await setActive({ session: createdSessionId });
+        navigation.navigate('Home');
         Alert.alert('Success', 'Logged in with Google successfully!');
       }
     } catch (err: any) {
