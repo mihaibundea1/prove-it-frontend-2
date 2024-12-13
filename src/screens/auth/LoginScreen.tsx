@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-nat
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
-import { NavigationProps } from '../types/navigation';
+import { NavigationProps } from '../../types/navigation';
 import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();

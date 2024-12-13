@@ -15,7 +15,7 @@ import {
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react-native';
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
-import { NavigationProps } from '../types/navigation';
+import { NavigationProps } from '../../types/navigation';
 import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();
