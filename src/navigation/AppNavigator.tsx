@@ -9,16 +9,40 @@ const Stack = createNativeStackNavigator();
 const AppNavigator = () => {
   const { isLoaded, session } = useSession();
 
+  console.log('AppNavigator State:', {
+    isLoaded,
+    hasSession: !!session,
+    sessionId: session?.id
+  });
+
   if (!isLoaded) {
+    console.log("App Navigator: Clerk not loaded");
     return null; 
   }
 
+  const initialRoute = session ? "MainTabs" : "AuthStack";
+  console.log("Selecting initial route:", initialRoute);
+
   return (
-    <Stack.Navigator initialRouteName={session ? "MainTabs" : "AuthStack"} screenOptions={{ headerShown: false }}>
+    <Stack.Navigator 
+      initialRouteName={initialRoute} 
+      screenOptions={{ 
+        headerShown: false,
+        gestureEnabled: false 
+      }}
+    >
       {session ? (
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
+        <Stack.Screen 
+          name="MainTabs" 
+          component={TabNavigator} 
+          options={{ animationEnabled: false }}
+        />
       ) : (
-        <Stack.Screen name="AuthStack" component={AuthStack} />
+        <Stack.Screen 
+          name="AuthStack" 
+          component={AuthStack} 
+          options={{ animationEnabled: false }}
+        />
       )}
     </Stack.Navigator>
   );
