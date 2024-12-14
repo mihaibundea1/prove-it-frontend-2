@@ -14,7 +14,7 @@ import { Mail, Lock } from 'lucide-react-native';
 import { useSignIn } from '@clerk/clerk-expo';
 import { OAuthButtons } from '../../components/auth/OAuth';
 import { InputField } from '../../components/shared/InputField';
-import { RootStackScreenProps } from '../../../types';
+import { RootStackScreenProps } from '../../types/navigation';
 
 export default function SignInScreen({
   navigation,

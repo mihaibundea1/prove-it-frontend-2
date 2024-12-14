@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { KeyRound } from 'lucide-react-native';
 import { useSignUp } from '@clerk/clerk-expo';
-import { RootStackScreenProps } from '../../../types';
+import { RootStackScreenProps } from '../../types/navigation';
 import { InputField } from '../../components/shared/InputField';
 import { log } from '../../../logger';
 
