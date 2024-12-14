@@ -21,8 +21,10 @@ export function OAuthButtons() {
       const { createdSessionId, setActive } = result;
       
       if (createdSessionId) {
-        await setActive({ session: createdSessionId });
-        console.log("OAuth successful, session created:", createdSessionId);
+        if (createdSessionId && setActive) {
+            await setActive({ session: createdSessionId });
+            console.log("OAuth successful, session created:", createdSessionId);
+          }        console.log("OAuth successful, session created:", createdSessionId);
       } else {
         console.log("No session created from OAuth");
       }
@@ -39,7 +41,10 @@ export function OAuthButtons() {
       const { createdSessionId, setActive } = result;
       
       if (createdSessionId) {
-        await setActive({ session: createdSessionId });
+        if (createdSessionId && setActive) {
+            await setActive({ session: createdSessionId });
+            console.log("OAuth successful, session created:", createdSessionId);
+          }
         console.log("OAuth successful, session created:", createdSessionId);
       } else {
         console.log("No session created from OAuth");

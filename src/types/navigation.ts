@@ -10,8 +10,8 @@ export type RootStackParamList = {
 
 // Auth Stack
 export type AuthStackParamList = {
-  Login: undefined;
-  Register: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
   VerifyCode: undefined;
 };
 

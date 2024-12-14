@@ -14,12 +14,12 @@ import { Mail, Lock, User, AtSign } from 'lucide-react-native';
 import { useSignUp } from '@clerk/clerk-expo';
 import { OAuthButtons } from '../../components/auth/OAuth';
 import { InputField } from '../../components/shared/InputField';
-import { RootStackScreenProps } from '../../../types';
+import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { log } from '../../../logger';
 
 export default function SignUpScreen({
   navigation,
-}: RootStackScreenProps<"SignUp">) {
+}: AuthStackScreenProps<"SignUp">) {
   const { isLoaded, signUp, setActive } = useSignUp();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

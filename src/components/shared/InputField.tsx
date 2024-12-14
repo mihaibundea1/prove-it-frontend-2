@@ -4,28 +4,34 @@ import { View, TextInput, TouchableOpacity } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 
 interface InputFieldProps {
-  icon: React.ReactNode;
-  placeholder: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  secureTextEntry?: boolean;
-  isPassword?: boolean;
-  showPassword?: boolean;
-  setShowPassword?: (show: boolean) => void;
-  isLoading?: boolean;
-}
-
-export const InputField: React.FC<InputFieldProps> = ({ 
-  icon, 
-  placeholder, 
-  value,
-  onChangeText,
-  secureTextEntry, 
-  isPassword = false,
-  showPassword,
-  setShowPassword,
-  isLoading = false
-}) => (
+    icon: React.ReactNode;
+    placeholder: string;
+    value: string;
+    onChangeText: (text: string) => void;
+    secureTextEntry?: boolean;
+    isPassword?: boolean;
+    showPassword?: boolean;
+    setShowPassword?: (show: boolean) => void;
+    isLoading?: boolean;
+    autoCapitalize?: "none" | "sentences" | "words" | "characters";
+    autoCorrect?: boolean;
+    keyboardType?: "default" | "email-address" | "numeric" | "phone-pad";
+  }
+  
+  export const InputField: React.FC<InputFieldProps> = ({ 
+    icon, 
+    placeholder, 
+    value,
+    onChangeText,
+    secureTextEntry, 
+    isPassword = false,
+    showPassword,
+    setShowPassword,
+    isLoading = false,
+    autoCapitalize = "none",
+    autoCorrect = false,
+    keyboardType = "default"
+  }) => (
   <View className="relative w-full h-12">
     <View className="absolute left-3 top-[25%] z-10">
       {icon}

@@ -12,13 +12,13 @@ import {
 } from 'react-native';
 import { KeyRound } from 'lucide-react-native';
 import { useSignUp } from '@clerk/clerk-expo';
-import { RootStackScreenProps } from '../../types/navigation';
+import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { InputField } from '../../components/shared/InputField';
 import { log } from '../../../logger';
 
 export default function VerifyCodeScreen({
   navigation,
-}: RootStackScreenProps<"VerifyCode">) {
+}: AuthStackScreenProps<"VerifyCode">) {
   const { isLoaded, signUp, setActive } = useSignUp();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +46,7 @@ export default function VerifyCodeScreen({
         Alert.alert('Error', 'Verification was not completed successfully');
       }
     } catch (err: any) {
-      log.error('Error verifying email:', err);
+      console.log('Error verifying email:', err);
       Alert.alert(
         'Error',
         err.errors?.[0]?.message || 'Failed to verify email. Please try again.'
@@ -67,7 +67,7 @@ export default function VerifyCodeScreen({
       await signUp.prepareEmailAddressVerification();
       Alert.alert('Success', 'Verification code has been resent to your email');
     } catch (err: any) {
-      log.error('Error resending verification code:', err);
+      console.log('Error resending verification code:', err);
       Alert.alert(
         'Error',
         err.errors?.[0]?.message || 'Failed to resend code. Please try again.'

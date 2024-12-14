@@ -35,13 +35,13 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="MainTabs" 
           component={TabNavigator} 
-          options={{ animationEnabled: false }}
+          options={{ animation: 'none' }}
         />
       ) : (
         <Stack.Screen 
           name="AuthStack" 
           component={AuthStack} 
-          options={{ animationEnabled: false }}
+          options={{ animation: 'none' }}
         />
       )}
     </Stack.Navigator>

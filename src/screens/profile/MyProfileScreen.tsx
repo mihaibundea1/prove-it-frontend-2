@@ -2,7 +2,7 @@ import * as React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { SignedIn, SignedOut, useAuth, useUser } from "@clerk/clerk-expo";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ProfileStackParamList } from "../../../types";
+import { ProfileStackParamList } from "../../navigation/types/navigationTypes";
 import { LogOut, Mail, Phone } from "lucide-react-native";
 
 type Props = NativeStackScreenProps<ProfileStackParamList, "MyProfileScreen">;
