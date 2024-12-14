@@ -1,7 +1,8 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import MyProfileScreen from '../../screens/auth/MyProfileScreen'
-const Stack = createStackNavigator();
+import MyProfileScreen from '../../screens/profile/MyProfileScreen'
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+const Stack = createNativeStackNavigator();
 
 const ProfileStack = () => {
   return (
