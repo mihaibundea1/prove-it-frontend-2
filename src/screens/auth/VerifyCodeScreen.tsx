@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,7 +14,7 @@ import { KeyRound } from 'lucide-react-native';
 import { useSignUp } from '@clerk/clerk-expo';
 import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { InputField } from '../../components/shared/InputField';
-import { log } from '../../../logger';
+import { userAPI } from '../../services/api/user.api';
 
 export default function VerifyCodeScreen({
   navigation,
@@ -32,7 +32,7 @@ export default function VerifyCodeScreen({
 
     try {
       setIsLoading(true);
-      
+
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
       });
@@ -41,6 +41,15 @@ export default function VerifyCodeScreen({
 
       if (completeSignUp.status === 'complete') {
         await setActive({ session: completeSignUp.createdSessionId });
+        
+        const token = await signUp.createdSessionId;
+
+        // Apoi înregistrăm utilizatorul în baza noastră de date
+        const clerkUser = signUp.createdUserId;
+        if (clerkUser) {
+          await userAPI.registerUser(clerkUser);
+          console.log('User registered successfully in database');
+        }
       } else {
         console.log('Verification not complete:', completeSignUp.status);
         Alert.alert('Error', 'Verification was not completed successfully');
@@ -78,12 +87,12 @@ export default function VerifyCodeScreen({
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1"
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView 
+        <ScrollView
           className="flex-1 bg-white"
           keyboardShouldPersistTaps="handled"
         >
@@ -111,7 +120,7 @@ export default function VerifyCodeScreen({
               </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className={`w-full h-12 bg-[#E63A1E] rounded-lg items-center justify-center mt-6 ${isLoading ? 'opacity-70' : ''}`}
               onPress={onPress}
               disabled={isLoading || isResending}
@@ -121,7 +130,7 @@ export default function VerifyCodeScreen({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className={`w-full h-12 border border-gray-200 rounded-lg items-center justify-center mt-4 ${isResending ? 'opacity-70' : ''}`}
               onPress={handleResendCode}
               disabled={isLoading || isResending}
@@ -131,7 +140,7 @@ export default function VerifyCodeScreen({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className="mt-6"
               onPress={() => navigation.goBack()}
               disabled={isLoading || isResending}

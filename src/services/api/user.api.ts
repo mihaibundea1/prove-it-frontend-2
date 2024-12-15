@@ -2,8 +2,55 @@
 import { User } from '../../types/user.types';
 import { Config } from '../../config/env';
 import { getAuthHeader } from '../../utils/auth.utils';
+import { useUser } from '@clerk/clerk-expo';
 
 export const userAPI = {
+  async registerUser(clerkId: string, authToken: string) {  // Adăugăm authToken ca parametru
+    try {
+      const headers = {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      };
+  
+      const userData = {
+        clerkId,
+        date_of_birth: new Date(),
+        height: 0,
+        weight: 0,
+        bio: "",
+        posts: [],
+        post_count: 0,
+        followers: [],
+        followers_count: 0,
+        following: [],
+        following_count: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
+        questions_completed: false,
+        profile_completed: false,
+        answers: {
+          version: 1,
+          responses: {}
+        }
+      };
+  
+      const response = await fetch(`${Config.apiUrl}/user_information/register`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(userData),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to register user');
+      }
+  
+      return await response.json();
+    } catch (error) {
+      console.error('Register user error:', error);
+      throw error;
+    }
+  },
+
   async updateProfile(userId: string, updates: Partial<User>) {
     try {
       const headers = await getAuthHeader();
