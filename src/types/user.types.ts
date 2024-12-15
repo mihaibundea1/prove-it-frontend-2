@@ -1,17 +1,32 @@
 // src/types/user.types.ts
-export interface UserCredentials {
+export interface User {
     _id: string;
-    // add other credential fields
+    email: string;
+    username: string;
+    firstName?: string;
+    lastName?: string;
+    followersCount?: number;
+    followingCount?: number;
+    postCount?: number;
+    bio?: string;
+    answers?: {
+      version: number;
+      responses: Record<string, string[]>;
+    };
+    createdAt?: string;
+    updatedAt?: string;
   }
   
-  export interface UserInfo {
-    // define user information fields
+  export interface UserContextState {
+    user: User | null;
+    isLoading: boolean;
+    error: string | null;
+    isClerkLoaded?: boolean;  // Adăugăm proprietatea pentru Clerk
   }
   
-  export interface UserContextValue {
-    userCredentials: UserCredentials | null;
-    userInfo: UserInfo | null;
-    setUserCredentials: (credentials: UserCredentials | null) => void;
-    setUserInfo: (info: UserInfo | null) => void;
-    fetchUserData: () => Promise<void>;
+  export interface UserContextActions {
+    refreshUser: () => Promise<void>;
+    updateProfile: (updates: Partial<User>) => Promise<void>;
   }
+  
+  export type UserContextType = UserContextState & UserContextActions;
