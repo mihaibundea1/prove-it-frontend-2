@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserContextType, UserCredentials, UserInfo } from '../types/user.types';
+import { useUser as useClerkUser } from '@clerk/clerk-expo';
+import { UserContextType, User } from '../types/user.types';
 import { userAPI } from '../services/api/user.api';
 import { userUtils } from '../utils/user.utils';
 
@@ -10,59 +11,80 @@ interface UserProviderProps {
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const [userCredentials, setUserCredentials] = useState<UserCredentials | null>(() => 
-    userUtils.getStoredUserCredentials()
-  );
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const { user: clerkUser } = useClerkUser();
+  const [user, setUser] = useState<User | null>(() => null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSetUserCredentials = useCallback((credentials: UserCredentials | null) => {
-    setUserCredentials(credentials);
-    userUtils.persistUserCredentials(credentials);
-  }, []);
-
-  const fetchUserData = useCallback(async (): Promise<void> => {
-    if (!userCredentials?._id) return;
+  const refreshUser = useCallback(async (): Promise<void> => {
+    if (!clerkUser?.id) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await userAPI.fetchUserInfo(userCredentials._id);
-      setUserInfo(userUtils.formatUserInfo(data));
+      const data = await userAPI.fetchUserProfile(clerkUser.id);
+      const formattedData = userUtils.formatUserData(data);
+      setUser(formattedData);
+      await userUtils.persistUserData(formattedData);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An unexpected error occurred';
       setError(message);
-      setUserInfo(null);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, [userCredentials]);
+  }, [clerkUser]);
 
-  const logout = useCallback((): void => {
-    handleSetUserCredentials(null);
-    setUserInfo(null);
+  const updateProfile = useCallback(async (updates: Partial<User>): Promise<void> => {
+    if (!clerkUser?.id) return;
+
+    setIsLoading(true);
     setError(null);
-  }, [handleSetUserCredentials]);
 
-  useEffect(() => {
-    if (userCredentials && !userInfo) {
-      fetchUserData();
+    try {
+      const { user: updatedUser } = await userAPI.updateProfile(clerkUser.id, updates);
+      const formattedData = userUtils.formatUserData(updatedUser);
+      setUser(formattedData);
+      await userUtils.persistUserData(formattedData);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setError(message);
+    } finally {
+      setIsLoading(false);
     }
-  }, [userCredentials, userInfo, fetchUserData]);
+  }, [clerkUser]);
+
+  // Sincronizează datele când se schimbă utilizatorul Clerk
+  useEffect(() => {
+    if (clerkUser) {
+      refreshUser();
+    } else {
+      setUser(null);
+      userUtils.persistUserData(null);
+    }
+  }, [clerkUser, refreshUser]);
+
+  // Încearcă să încarce datele salvate local la pornire
+  useEffect(() => {
+    const loadStoredData = async () => {
+      const storedUser = await userUtils.getStoredUserData();
+      if (storedUser) {
+        setUser(storedUser);
+      }
+    };
+
+    loadStoredData();
+  }, []);
 
   const value: UserContextType = {
     // State
-    userCredentials,
-    userInfo,
+    user,
     isLoading,
     error,
     // Actions
-    setUserCredentials: handleSetUserCredentials,
-    setUserInfo,
-    fetchUserData,
-    logout
+    refreshUser,
+    updateProfile
   };
 
   return (
