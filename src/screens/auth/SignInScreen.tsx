@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { Mail, Lock } from 'lucide-react-native';
 import { useSignIn } from '@clerk/clerk-expo';
-import { OAuthButtons } from '../../components/auth/OAuth';
+import { OAuthButtons } from '../../services/auth/OAuth';
 import { InputField } from '../../components/shared/InputField';
-import { RootStackScreenProps } from '../../navigation/types/navigationTypes';
+import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 
 export default function SignInScreen({
   navigation,
