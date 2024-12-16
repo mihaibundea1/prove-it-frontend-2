@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,7 +14,7 @@ import { KeyRound } from 'lucide-react-native';
 import { useSignUp } from '@clerk/clerk-expo';
 import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { InputField } from '../../components/shared/InputField';
-import { log } from '../../../logger';
+import { userAPI } from '../../services/api/user.api';
 
 export default function VerifyCodeScreen({
   navigation,
@@ -29,24 +29,57 @@ export default function VerifyCodeScreen({
       Alert.alert('Error', 'Please enter the verification code');
       return;
     }
-
+  
     try {
       setIsLoading(true);
-      
+      console.log("DEBUG: Starting verification process");
+  
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
       });
-
-      console.log('Verification result:', completeSignUp);
-
+  
+      console.log('DEBUG: Complete signup response:', completeSignUp);
+  
       if (completeSignUp.status === 'complete') {
-        await setActive({ session: completeSignUp.createdSessionId });
+        console.log('DEBUG: Signup completed successfully');
+        
+        const token = completeSignUp.createdSessionId;
+        console.log('DEBUG: Token received:', token);
+        
+        await setActive({ session: token });
+        console.log('DEBUG: Session activated');
+  
+        if (!signUp.createdUserId || !token) {
+          console.log('DEBUG: Missing user ID or token');
+          throw new Error('Missing user ID or token');
+        }
+  
+        console.log('DEBUG: Attempting to register user in database');
+        console.log('DEBUG: User ID:', signUp.createdUserId);
+        console.log('DEBUG: Using token:', token);
+  
+        try {
+          const registrationResult = await userAPI.registerUser(
+            signUp.createdUserId, 
+            token
+          );
+          console.log('DEBUG: Registration result:', registrationResult);
+          
+        } catch (dbError) {
+          console.error('DEBUG: Database registration error:', dbError);
+          console.error('DEBUG: Full error object:', JSON.stringify(dbError));
+          Alert.alert(
+            'Warning',
+            'Account created but profile setup failed. Please try updating your profile later.'
+          );
+        }
       } else {
-        console.log('Verification not complete:', completeSignUp.status);
+        console.log('DEBUG: Verification not complete:', completeSignUp.status);
         Alert.alert('Error', 'Verification was not completed successfully');
       }
     } catch (err: any) {
-      console.log('Error verifying email:', err);
+      console.error('DEBUG: Main error in verification:', err);
+      console.error('DEBUG: Full error object:', JSON.stringify(err));
       Alert.alert(
         'Error',
         err.errors?.[0]?.message || 'Failed to verify email. Please try again.'
@@ -67,7 +100,7 @@ export default function VerifyCodeScreen({
       await signUp.prepareEmailAddressVerification();
       Alert.alert('Success', 'Verification code has been resent to your email');
     } catch (err: any) {
-      console.log('Error resending verification code:', err);
+      console.error('Error resending verification code:', err);
       Alert.alert(
         'Error',
         err.errors?.[0]?.message || 'Failed to resend code. Please try again.'
@@ -78,12 +111,12 @@ export default function VerifyCodeScreen({
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1"
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView 
+        <ScrollView
           className="flex-1 bg-white"
           keyboardShouldPersistTaps="handled"
         >
@@ -111,8 +144,10 @@ export default function VerifyCodeScreen({
               </View>
             </View>
 
-            <TouchableOpacity 
-              className={`w-full h-12 bg-[#E63A1E] rounded-lg items-center justify-center mt-6 ${isLoading ? 'opacity-70' : ''}`}
+            <TouchableOpacity
+              className={`w-full h-12 bg-[#E63A1E] rounded-lg items-center justify-center mt-6 ${
+                isLoading ? 'opacity-70' : ''
+              }`}
               onPress={onPress}
               disabled={isLoading || isResending}
             >
@@ -121,8 +156,10 @@ export default function VerifyCodeScreen({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              className={`w-full h-12 border border-gray-200 rounded-lg items-center justify-center mt-4 ${isResending ? 'opacity-70' : ''}`}
+            <TouchableOpacity
+              className={`w-full h-12 border border-gray-200 rounded-lg items-center justify-center mt-4 ${
+                isResending ? 'opacity-70' : ''
+              }`}
               onPress={handleResendCode}
               disabled={isLoading || isResending}
             >
@@ -131,7 +168,7 @@ export default function VerifyCodeScreen({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className="mt-6"
               onPress={() => navigation.goBack()}
               disabled={isLoading || isResending}
