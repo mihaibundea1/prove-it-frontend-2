@@ -32,7 +32,7 @@ export type FeedStackParamList = {
 };
 
 export type ProfileStackParamList = {
-  MyProfileScreen: undefined;
+  ProfileScreen: undefined;
 };
 
 // Screen Props Types

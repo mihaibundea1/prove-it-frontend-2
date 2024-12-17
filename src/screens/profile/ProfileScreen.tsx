@@ -1,12 +1,35 @@
-// src/screens/HomeScreen.tsx
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React from 'react';
+import { ScrollView, View } from 'react-native';
+import { useUser, useClerk } from '@clerk/clerk-expo';
+import ProfileHeader from '../../components/profile/ProfileHeader';
+import ProfileStats from '../../components/profile/ProfileStats';
+import ProfileMenu from '../../components/profile/ProfileMenu';
+import MonthlyHabitTracker from '../../components/profile/MonthlyHabitTracker';
 
+const ProfileScreen = () => {
+  const { user } = useUser();
+  const clerk = useClerk();
 
-export default function FeedScreen() {
+  const handleLogout = () => {
+    clerk.signOut();
+  };
+
+  if (!user) return null; // Loading state
+
   return (
-    <View className="flex-1 items-center justify-center p-6 bg-white">
-      <Text className="text-3xl font-bold mb-8">Welcome to Profile</Text>
-    </View>
+    <ScrollView className="flex-1 bg-white">
+      <View className="p-4">
+        <ProfileHeader 
+          imageUrl={user.imageUrl}
+          fullName={user.fullName || ''}
+          emailAddress={user.emailAddresses[0]?.emailAddress || ''}
+        />
+        <ProfileStats />
+        <MonthlyHabitTracker />
+        <ProfileMenu onLogout={handleLogout} />
+      </View>
+    </ScrollView>
   );
-}
+};
+
+export default ProfileScreen;
