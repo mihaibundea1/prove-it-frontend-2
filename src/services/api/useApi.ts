@@ -1,7 +1,7 @@
 // src/services/api/useApi.ts
-import axios, { AxiosResponse, AxiosInstance, AxiosRequestHeaders } from 'axios';
+import axios, { AxiosResponse, AxiosInstance } from 'axios';
 import { API_CONFIG, getApiHeaders } from '@/utils/api.utils';
-import { ApiResponse, ApiError, ApiHandler, ApiMethods, CustomAxiosError } from './api.types';
+import { ApiResponse, ApiError, ApiHandler, ApiMethods, CustomAxiosError } from '@/types/api.types';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-expo';
 
@@ -19,10 +19,9 @@ export const useApi = (): ApiMethods & { isInitialized: boolean } => {
       try {
         const instance = axios.create({
           baseURL: API_CONFIG.baseUrl,
-          timeout: 10000
+          timeout: API_CONFIG.timeout
         });
 
-        // Interceptor pentru a adăuga headers proaspete la fiecare request
         instance.interceptors.request.use(async (config) => {
           try {
             const freshHeaders = await getHeaders();
@@ -34,17 +33,16 @@ export const useApi = (): ApiMethods & { isInitialized: boolean } => {
           }
         });
 
-        // Interceptor pentru response-uri
         instance.interceptors.response.use(
           (response: AxiosResponse) => response,
           (error: CustomAxiosError) => {
             if (!error.response) {
               throw {
-                message: 'Verificați conexiunea la internet',
+                message: 'Please check your internet connection',
                 code: 'NETWORK_ERROR'
               };
             }
-            
+
             switch (error.response?.status) {
               case 401:
                 console.error('Unauthorized access');
@@ -55,7 +53,7 @@ export const useApi = (): ApiMethods & { isInitialized: boolean } => {
               default:
                 break;
             }
-            
+
             throw error;
           }
         );
@@ -83,11 +81,11 @@ export const useApi = (): ApiMethods & { isInitialized: boolean } => {
     } catch (err) {
       const error = err as CustomAxiosError;
       const apiError: ApiError = {
-        message: error.response?.data?.message || error.message || 'A apărut o eroare',
+        message: error.response?.data?.message || error.message || 'An error occurred',
         status: error.response?.status,
         code: error.code
       };
-      
+
       return {
         data: null,
         error: apiError.message,

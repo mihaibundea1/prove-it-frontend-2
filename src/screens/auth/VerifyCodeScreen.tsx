@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,102 +14,99 @@ import { KeyRound } from 'lucide-react-native';
 import { useSignUp } from '@clerk/clerk-expo';
 import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { InputField } from '../../components/shared/InputField';
-import { userAPI } from '../../services/api/user.api';
+import { useUserService } from '@/services/api/endpoints/user/hooks/useUserService';
 
 export default function VerifyCodeScreen({
   navigation,
 }: AuthStackScreenProps<"VerifyCode">) {
+  // All hooks at the top level
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { registerUser } = useUserService();
+  
+  // State management
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  const onPress = async () => {
-    if (!isLoaded || !code.trim()) {
+  // Handler for verification process
+  const handleVerification = useCallback(async () => {
+    if (!isLoaded) {
+      Alert.alert('Error', 'System is still loading');
+      return;
+    }
+
+    if (!code.trim()) {
       Alert.alert('Error', 'Please enter the verification code');
       return;
     }
-  
+
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
-      console.log("DEBUG: Starting verification process");
-  
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
       });
-  
-      console.log('DEBUG: Complete signup response:', completeSignUp);
-  
-      if (completeSignUp.status === 'complete') {
-        console.log('DEBUG: Signup completed successfully');
-        
-        const token = completeSignUp.createdSessionId;
-        console.log('DEBUG: Token received:', token);
-        
-        await setActive({ session: token });
-        console.log('DEBUG: Session activated');
-  
-        if (!signUp.createdUserId || !token) {
-          console.log('DEBUG: Missing user ID or token');
-          throw new Error('Missing user ID or token');
-        }
-  
-        console.log('DEBUG: Attempting to register user in database');
-        console.log('DEBUG: User ID:', signUp.createdUserId);
-        console.log('DEBUG: Using token:', token);
-  
-        try {
-          const registrationResult = await userAPI.registerUser(
-            signUp.createdUserId, 
-            token
-          );
-          console.log('DEBUG: Registration result:', registrationResult);
-          
-        } catch (dbError) {
-          console.error('DEBUG: Database registration error:', dbError);
-          console.error('DEBUG: Full error object:', JSON.stringify(dbError));
-          Alert.alert(
-            'Warning',
-            'Account created but profile setup failed. Please try updating your profile later.'
-          );
-        }
-      } else {
-        console.log('DEBUG: Verification not complete:', completeSignUp.status);
+
+      if (completeSignUp.status !== 'complete') {
         Alert.alert('Error', 'Verification was not completed successfully');
+        return;
       }
-    } catch (err: any) {
-      console.error('DEBUG: Main error in verification:', err);
-      console.error('DEBUG: Full error object:', JSON.stringify(err));
+
+      const sessionToken = completeSignUp.createdSessionId;
+      const userId = signUp.createdUserId;
+
+      if (!userId || !sessionToken) {
+        throw new Error('Missing user ID or session token');
+      }
+
+      // Activate the session
+      await setActive({ session: sessionToken });
+
+      // Register user in your database
+      const registrationResult = await registerUser(userId);
+      
+      if (registrationResult.error) {
+        Alert.alert(
+          'Warning',
+          'Account created but profile setup failed. Please try updating your profile later.'
+        );
+      }
+
+    } catch (error: any) {
+      console.error('Verification error:', error);
       Alert.alert(
         'Error',
-        err.errors?.[0]?.message || 'Failed to verify email. Please try again.'
+        error.errors?.[0]?.message || 'Failed to verify email. Please try again.'
       );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLoaded, code, signUp, setActive, registerUser]);
 
-  const handleResendCode = async () => {
+  // Handler for resending verification code
+  const handleResendCode = useCallback(async () => {
     if (!isLoaded) {
       Alert.alert('Error', 'Please wait while the system loads');
       return;
     }
 
+    setIsResending(true);
+
     try {
-      setIsResending(true);
       await signUp.prepareEmailAddressVerification();
       Alert.alert('Success', 'Verification code has been resent to your email');
-    } catch (err: any) {
-      console.error('Error resending verification code:', err);
+    } catch (error: any) {
+      console.error('Error resending code:', error);
       Alert.alert(
         'Error',
-        err.errors?.[0]?.message || 'Failed to resend code. Please try again.'
+        error.errors?.[0]?.message || 'Failed to resend code. Please try again.'
       );
     } finally {
       setIsResending(false);
     }
-  };
+  }, [isLoaded, signUp]);
 
+  // Render the UI
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -140,6 +137,8 @@ export default function VerifyCodeScreen({
                   value={code}
                   onChangeText={setCode}
                   isLoading={isLoading}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
             </View>
@@ -148,7 +147,7 @@ export default function VerifyCodeScreen({
               className={`w-full h-12 bg-[#E63A1E] rounded-lg items-center justify-center mt-6 ${
                 isLoading ? 'opacity-70' : ''
               }`}
-              onPress={onPress}
+              onPress={handleVerification}
               disabled={isLoading || isResending}
             >
               <Text className="text-white font-bold text-lg">

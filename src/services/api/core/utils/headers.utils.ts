@@ -1,27 +1,21 @@
-// src/utils/api.utils.ts
-import { Config } from '@/config/env';
-import { AxiosRequestHeaders } from 'axios';
+// services/api/core/utils/headers.utils.ts
+import { RawAxiosRequestHeaders } from 'axios';
 
-export const API_CONFIG = {
-  baseUrl: Config.apiUrl,
-  timeout: 10000,
-} as const;
-
-export const getApiHeaders = async (
+export const createApiHeaders = async (
   getToken: () => Promise<string | null>
-): Promise<AxiosRequestHeaders> => {
+): Promise<RawAxiosRequestHeaders> => {
   try {
     const token = await getToken();
     return {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-    } as AxiosRequestHeaders;
+    };
   } catch (error) {
     console.error('Error getting API headers:', error);
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-    } as AxiosRequestHeaders;
+    };
   }
 };

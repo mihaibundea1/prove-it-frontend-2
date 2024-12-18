@@ -73,16 +73,6 @@ export const userUtils = {
       return null;
     }
   },
-
-  // Helper pentru a verifica dacă un user are completat profilul
-  hasCompletedProfile(user: User): boolean {
-    return Boolean(
-      user.firstName &&
-      user.lastName &&
-      user.bio
-    );
-  },
-
   // Helper pentru a verifica dacă un user a completat chestionarul
   hasCompletedQuestionnaire(user: User): boolean {
     return Boolean(
