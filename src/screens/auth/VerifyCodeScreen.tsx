@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -16,49 +16,40 @@ import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { InputField } from '../../components/shared/InputField';
 import { useUserService } from '@/services/api/endpoints/user/hooks/useUserService';
 
-export default function VerifyCodeScreen({
-  navigation,
-}: AuthStackScreenProps<"VerifyCode">) {
-  // 1. First, all context hooks
-  const { isLoaded, signUp, setActive } = useSignUp();
+const VerifyCodeScreen: React.FC<AuthStackScreenProps<"VerifyCode">> = ({ navigation }) => {
+  const signUpData = useSignUp();
   const userService = useUserService();
-
-  // 2. Then, all state hooks
-  const [verificationState, setVerificationState] = useState({
+  const [state, setState] = React.useState({
     code: '',
     isLoading: false,
     isResending: false
   });
 
-  // 3. Memoized values
-  const isDisabled = useMemo(() => {
-    return verificationState.isLoading || verificationState.isResending;
-  }, [verificationState.isLoading, verificationState.isResending]);
+  const isDisabled = state.isLoading || state.isResending;
 
-  // 4. Callbacks
-  const handleCodeChange = useCallback((text: string) => {
-    setVerificationState(prev => ({
-      ...prev,
-      code: text
+  const handleCodeChange = React.useCallback((text: string) => {
+    setState(currentState => ({
+      ...currentState,
+      code: text.trim()
     }));
   }, []);
 
-  const handleVerification = useCallback(async () => {
-    if (!isLoaded) {
+  const handleVerification = React.useCallback(async () => {
+    if (!signUpData.isLoaded) {
       Alert.alert('Error', 'System is still loading');
       return;
     }
 
-    if (!verificationState.code.trim()) {
+    if (!state.code.trim()) {
       Alert.alert('Error', 'Please enter the verification code');
       return;
     }
 
-    try {
-      setVerificationState(prev => ({ ...prev, isLoading: true }));
+    setState(prev => ({ ...prev, isLoading: true }));
 
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code: verificationState.code,
+    try {
+      const completeSignUp = await signUpData.signUp.attemptEmailAddressVerification({
+        code: state.code,
       });
 
       if (completeSignUp.status !== 'complete') {
@@ -67,23 +58,21 @@ export default function VerifyCodeScreen({
       }
 
       const sessionToken = completeSignUp.createdSessionId;
-      const userId = signUp.createdUserId;
+      const userId = signUpData.signUp.createdUserId;
 
       if (!userId || !sessionToken) {
         throw new Error('Missing user ID or session token');
       }
 
-      await setActive({ session: sessionToken });
-
+      await signUpData.setActive({ session: sessionToken });
       const registrationResult = await userService.registerUser(userId);
-      
+
       if (registrationResult.error) {
         Alert.alert(
           'Warning',
           'Account created but profile setup failed. Please try updating your profile later.'
         );
       }
-
     } catch (error: any) {
       console.error('Verification error:', error);
       Alert.alert(
@@ -91,19 +80,20 @@ export default function VerifyCodeScreen({
         error.errors?.[0]?.message || 'Failed to verify email. Please try again.'
       );
     } finally {
-      setVerificationState(prev => ({ ...prev, isLoading: false }));
+      setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [isLoaded, verificationState.code, signUp, setActive, userService]);
+  }, [signUpData, state.code, userService]);
 
-  const handleResendCode = useCallback(async () => {
-    if (!isLoaded) {
+  const handleResendCode = React.useCallback(async () => {
+    if (!signUpData.isLoaded) {
       Alert.alert('Error', 'Please wait while the system loads');
       return;
     }
 
+    setState(prev => ({ ...prev, isResending: true }));
+
     try {
-      setVerificationState(prev => ({ ...prev, isResending: true }));
-      await signUp.prepareEmailAddressVerification();
+      await signUpData.signUp.prepareEmailAddressVerification();
       Alert.alert('Success', 'Verification code has been resent to your email');
     } catch (error: any) {
       console.error('Error resending code:', error);
@@ -112,11 +102,10 @@ export default function VerifyCodeScreen({
         error.errors?.[0]?.message || 'Failed to resend code. Please try again.'
       );
     } finally {
-      setVerificationState(prev => ({ ...prev, isResending: false }));
+      setState(prev => ({ ...prev, isResending: false }));
     }
-  }, [isLoaded, signUp]);
+  }, [signUpData]);
 
-  // 5. Render
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -144,38 +133,34 @@ export default function VerifyCodeScreen({
                 <InputField
                   icon={<KeyRound size={20} color="#9CA3AF" />}
                   placeholder="Enter verification code"
-                  value={verificationState.code}
+                  value={state.code}
                   onChangeText={handleCodeChange}
-                  isLoading={verificationState.isLoading}
+                  isLoading={state.isLoading}
                   keyboardType="number-pad"
-                  autoCapitalize="none"
-                  autoCorrect={false}
                   maxLength={6}
                 />
               </View>
             </View>
 
             <TouchableOpacity
-              className={`w-full h-12 bg-[#E63A1E] rounded-lg items-center justify-center mt-6 ${
-                isDisabled ? 'opacity-70' : ''
-              }`}
+              className={`w-full h-12 bg-[#E63A1E] rounded-lg items-center justify-center mt-6 ${isDisabled ? 'opacity-70' : ''
+                }`}
               onPress={handleVerification}
               disabled={isDisabled}
             >
               <Text className="text-white font-bold text-lg">
-                {verificationState.isLoading ? 'Verifying...' : 'Verify Email'}
+                {state.isLoading ? 'Verifying...' : 'Verify Email'}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className={`w-full h-12 border border-gray-200 rounded-lg items-center justify-center mt-4 ${
-                isDisabled ? 'opacity-70' : ''
-              }`}
+              className={`w-full h-12 border border-gray-200 rounded-lg items-center justify-center mt-4 ${isDisabled ? 'opacity-70' : ''
+                }`}
               onPress={handleResendCode}
               disabled={isDisabled}
             >
               <Text className="text-gray-700 font-medium">
-                {verificationState.isResending ? 'Resending...' : 'Resend Code'}
+                {state.isResending ? 'Resending...' : 'Resend Code'}
               </Text>
             </TouchableOpacity>
 
@@ -194,3 +179,5 @@ export default function VerifyCodeScreen({
     </KeyboardAvoidingView>
   );
 }
+
+export default React.memo(VerifyCodeScreen);

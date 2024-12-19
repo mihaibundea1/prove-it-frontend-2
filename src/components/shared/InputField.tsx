@@ -1,6 +1,6 @@
-// components/InputField.tsx
-import React, { useCallback } from 'react';
-import { View, TextInput, TouchableOpacity } from 'react-native';
+// InputField.tsx
+import React, { memo } from 'react';
+import { View, TextInput, TouchableOpacity, Keyboard } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 
 interface InputFieldProps {
@@ -19,7 +19,7 @@ interface InputFieldProps {
   maxLength?: number;
 }
 
-export const InputField: React.FC<InputFieldProps> = ({
+const InputField: React.FC<InputFieldProps> = memo(({
   icon,
   placeholder,
   value,
@@ -34,10 +34,10 @@ export const InputField: React.FC<InputFieldProps> = ({
   keyboardType = "default",
   maxLength
 }) => {
-  // Memoize the change handler
-  const handleChangeText = useCallback((text: string) => {
-    if (isLoading) return;
-    onChangeText(text);
+  const handleChangeText = React.useCallback((text: string) => {
+    if (!isLoading) {
+      onChangeText(text);
+    }
   }, [isLoading, onChangeText]);
 
   return (
@@ -59,6 +59,7 @@ export const InputField: React.FC<InputFieldProps> = ({
         maxLength={maxLength}
         returnKeyType="done"
         enablesReturnKeyAutomatically
+        onSubmitEditing={Keyboard.dismiss}
       />
       {isPassword && setShowPassword && (
         <TouchableOpacity
@@ -73,4 +74,8 @@ export const InputField: React.FC<InputFieldProps> = ({
       )}
     </View>
   );
-};
+});
+
+InputField.displayName = 'InputField';
+
+export { InputField };

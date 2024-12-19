@@ -6,8 +6,8 @@ export abstract class BaseApiService {
   protected httpClient: HttpClient;
   protected baseEndpoint: string;
 
-  constructor(baseEndpoint: string) {
-    this.httpClient = HttpClient.getInstance();
+  constructor(baseEndpoint: string, getToken?: () => Promise<string | null>) {
+    this.httpClient = HttpClient.getInstance(getToken); // Pass getToken here
     this.baseEndpoint = baseEndpoint;
   }
 

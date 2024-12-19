@@ -1,17 +1,20 @@
 // services/api/endpoints/user/hooks/useUserService.ts
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { UserService } from '../UserService';
 import { User } from '../types/user.types';
 import { ApiResponse } from '../../../core/types/api.types';
+import { useAuth } from '@clerk/clerk-expo';
 
 export const useUserService = () => {
+  const { getToken } = useAuth();
+  const serviceRef = useRef(new UserService(getToken));
   const [loading, setLoading] = useState(false);
-  const userService = new UserService();
 
+  // All methods should use serviceRef.current
   const registerUser = async (clerkId: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     try {
-      return await userService.registerUser(clerkId);
+      return await serviceRef.current.registerUser(clerkId);
     } finally {
       setLoading(false);
     }
@@ -23,7 +26,7 @@ export const useUserService = () => {
   ): Promise<ApiResponse<User>> => {
     setLoading(true);
     try {
-      return await userService.updateProfile(userId, updates);
+      return await serviceRef.current.updateProfile(userId, updates);
     } finally {
       setLoading(false);
     }
@@ -32,7 +35,7 @@ export const useUserService = () => {
   const fetchUserProfile = async (userId: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     try {
-      return await userService.fetchUserProfile(userId);
+      return await serviceRef.current.fetchUserProfile(userId);
     } finally {
       setLoading(false);
     }
@@ -43,7 +46,7 @@ export const useUserService = () => {
   ): Promise<ApiResponse<User>> => {
     setLoading(true);
     try {
-      return await userService.createOrUpdateUser(userData);
+      return await serviceRef.current.createOrUpdateUser(userData);
     } finally {
       setLoading(false);
     }

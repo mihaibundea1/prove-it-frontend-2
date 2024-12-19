@@ -5,8 +5,8 @@ import { User } from './types/user.types';
 import { USER_ENDPOINTS } from './constants/user.endpoints';
 
 export class UserService extends BaseApiService {
-  constructor() {
-    super(USER_ENDPOINTS.BASE);
+  constructor(getToken?: () => Promise<string | null>) {
+    super(USER_ENDPOINTS.BASE, getToken);
   }
 
   private createDefaultUserData(clerkId: string): Partial<User> {
