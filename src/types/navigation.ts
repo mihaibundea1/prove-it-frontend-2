@@ -33,7 +33,21 @@ export type FeedStackParamList = {
 
 export type ProfileStackParamList = {
   ProfileScreen: undefined;
+  SettingsStack: { screen: keyof SettingsStackParamList } | undefined;
 };
+
+export type SettingsStackParamList = {
+  SettingsScreen: undefined;
+  EditProfileScreen: undefined;
+  ChangePasswordScreen: undefined;
+  NotificationSettingsScreen: undefined;
+  PrivacySettingsScreen: undefined;
+  SubscriptionScreen: undefined;
+  DataExportScreen: undefined;
+  LanguageScreen: undefined;
+  DeleteAccountScreen: undefined;
+  HelpCenterScreen: undefined;
+}
 
 // Screen Props Types
 export type RootStackScreenProps<Screen extends keyof RootStackParamList> = 
