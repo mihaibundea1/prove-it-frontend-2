@@ -8,13 +8,16 @@ export class RequestInterceptor {
       async (config) => {
         try {
           const headers = await createApiHeaders(getToken);
+          console.log(headers);
           const axiosHeaders = new AxiosHeaders(config.headers || {});
-          
+          console.log(axiosHeaders);
+
           Object.entries(headers).forEach(([key, value]) => {
             axiosHeaders.set(key, value);
           });
 
           config.headers = axiosHeaders;
+          console.log(headers);
           return config;
         } catch (error) {
           console.error('Error in request interceptor:', error);
