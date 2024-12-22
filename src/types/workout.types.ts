@@ -4,6 +4,8 @@ export interface Workout {
     startTime: string;
     pauseTime?: string;
     exercises: Array<any>; // Define Exercise type based on your needs
+    name: string;
+    createdAt: string;
 }
 
 export interface WorkoutContextState {

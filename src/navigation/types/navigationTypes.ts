@@ -25,6 +25,11 @@ export type TabParamList = {
 // Individual Stack Params for each tab
 export type HomeStackParamList = {
   HomeScreen: undefined;
+  ExerciseHomeScreen: undefined;
+  AiSuggestionsScreen: undefined;
+  StartWorkoutScreen: undefined;
+  Questions: undefined;
+  AllWorkoutsScreen: undefined;
 };
 
 export type FeedStackParamList = {
@@ -36,24 +41,30 @@ export type ProfileStackParamList = {
 };
 
 // Screen Props Types
-export type RootStackScreenProps<Screen extends keyof RootStackParamList> = 
+export type RootStackScreenProps<Screen extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, Screen>;
 
-export type AuthStackScreenProps<Screen extends keyof AuthStackParamList> = 
+export type AuthStackScreenProps<Screen extends keyof AuthStackParamList> =
   CompositeScreenProps<
     NativeStackScreenProps<AuthStackParamList, Screen>,
     RootStackScreenProps<keyof RootStackParamList>
   >;
 
-export type TabScreenProps<Screen extends keyof TabParamList> = 
+export type TabScreenProps<Screen extends keyof TabParamList> =
   CompositeScreenProps<
     BottomTabScreenProps<TabParamList, Screen>,
     RootStackScreenProps<keyof RootStackParamList>
   >;
 
+export type HomeStackScreenProps<Screen extends keyof HomeStackParamList> =
+  CompositeScreenProps<
+    NativeStackScreenProps<HomeStackParamList, Screen>,
+    TabScreenProps<keyof TabParamList>
+  >;
+
 // Global declaration for type safety
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
+    interface RootParamList extends RootStackParamList { }
   }
 }
