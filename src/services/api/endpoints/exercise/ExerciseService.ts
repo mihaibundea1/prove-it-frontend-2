@@ -1,7 +1,7 @@
 // services/api/endpoints/exercise/ExerciseService.ts
 import { BaseApiService } from '../../core/BaseApiService';
 import { ApiResponse } from '../../core/types/api.types';
-import { Exercise, ExerciseFilters } from './types/exercise.types';
+import { Exercise } from '@/types/exercise.types';
 import { EXERCISE_ENDPOINTS } from './constants/exercise.endpoints';
 
 export class ExerciseService extends BaseApiService {
