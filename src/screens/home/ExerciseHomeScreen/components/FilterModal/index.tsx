@@ -1,8 +1,9 @@
+// src/screens/home/ExerciseHomeScreen/components/FilterModal/index.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList } from 'react-native';
-import type { FilterModalProps, FilterOptionKey } from '../../types/exercise.types';
+import type { FilterModalProps, FilterOptionKey } from '../types/filter.types';
+import { filterOptions } from '../types/filter.types';
 import { useFilterModal } from './hooks/useFilterModal';
-import { filterOptions } from '../../types/exercise.types';
 
 export const FilterModal: React.FC<FilterModalProps> = ({
   visible,

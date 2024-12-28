@@ -1,158 +1,203 @@
-// src/contexts/ExerciseContext.tsx
+// contexts/exercise/ExerciseContext.tsx
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { Exercise, ExerciseContextType } from '../types/exercise.types';
-import { exerciseApi } from '../services/api/exercise.api';
-import { exerciseUtils } from '../utils/exercise.utils';
+import { Exercise, ExerciseContextType, ExerciseFilters } from '@/services/api/endpoints/exercise/types/exercise.types';
+import { useExerciseService } from '@/services/api/endpoints/exercise/hooks/useExerciseService';
 
-export const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
+// State Management
+interface State {
+  allExercises: Exercise[];
+  exercisesTypes: Exercise[];
+  selectedExercises: Exercise[];
+  exerciseDetails: Record<string, Exercise>;
+  loadingExercises: boolean;
+  error: string | null;
+}
+
+const initialState: State = {
+  allExercises: [],
+  exercisesTypes: [],
+  selectedExercises: [],
+  exerciseDetails: {},
+  loadingExercises: true,
+  error: null
+};
+
+const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
 
 interface ExerciseProviderProps {
   children: React.ReactNode;
+  onError?: (error: string) => void;
 }
 
-export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({ children }) => {
-  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
-  const [exercisesTypes, setExercisesTypes] = useState<Exercise[]>([]);
-  const [loadingExercises, setLoadingExercises] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
-  const [exerciseDetails, setExerciseDetails] = useState<Record<string, Exercise>>({});
-  
-  const abortControllerRef = useRef<AbortController | null>(null);
+export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
+  children,
+  onError
+}) => {
+  // State & Refs
+  const [state, setState] = useState<State>(initialState);
   const initialFetchDone = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingUpdateRef = useRef<boolean>(false);
 
-  const fetchInitialExercises = async () => {
+  // Services
+  const {
+    loading: serviceLoading,
+    fetchAllExercises,
+    fetchExerciseDetails,
+    getSelectedExercises,
+    saveSelectedExercises
+  } = useExerciseService();
+
+  // Helper Functions
+  const handleError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    setState(prev => ({ ...prev, error: message }));
+    onError?.(message);
+  }, [onError]);
+
+  const updateState = useCallback((updates: Partial<State>) => {
+    setState(current => ({ ...current, ...updates }));
+  }, []);
+
+  const initializeExercises = useCallback(async () => {
+    if (initialFetchDone.current || pendingUpdateRef.current) return;
+    
+    pendingUpdateRef.current = true;
+
+    try {
+      const [exercisesResponse, selectedResponse] = await Promise.all([
+        fetchAllExercises(),
+        getSelectedExercises()
+      ]);
+
+      if (exercisesResponse.error) {
+        throw new Error(exercisesResponse.error);
+      }
+
+      if (exercisesResponse.data) {
+        updateState({
+          allExercises: exercisesResponse.data,
+          exercisesTypes: exercisesResponse.data,
+          selectedExercises: selectedResponse.data || [],
+          loadingExercises: false
+        });
+
+        initialFetchDone.current = true;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to initialize exercises';
+      updateState({ 
+        error: message,
+        loadingExercises: false 
+      });
+      onError?.(message);
+    } finally {
+      pendingUpdateRef.current = false;
+    }
+  }, [fetchAllExercises, getSelectedExercises, onError, updateState]);
+
+
+  // Data Loading
+  const loadInitialData = useCallback(async () => {
     if (initialFetchDone.current) return;
 
     try {
-      const { exercises } = await exerciseApi.getAllExercises();
-      const formattedExercises = exercises
-        .map(exercise => {
-          try {
-            return exerciseUtils.formatExercise(exercise);
-          } catch (err) {
-            console.error('Error formatting exercise:', err);
-            return null;
-          }
-        })
-        .filter((exercise): exercise is Exercise => exercise !== null);
+      updateState({ loadingExercises: true });
 
-      setAllExercises(formattedExercises);
-      setExercisesTypes(formattedExercises);
+      const [exercisesResponse, selectedResponse] = await Promise.all([
+        fetchAllExercises(),
+        getSelectedExercises()
+      ]);
+
+      if (exercisesResponse.error) {
+        throw new Error(exercisesResponse.error);
+      }
+
+      updateState({
+        allExercises: exercisesResponse.data || [],
+        exercisesTypes: exercisesResponse.data || [],
+        selectedExercises: selectedResponse.data || [],
+        loadingExercises: false
+      });
+
       initialFetchDone.current = true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Error fetching exercises:', errorMessage);
-    } finally {
-      setLoadingExercises(false);
+    } catch (error) {
+      handleError(error);
+      updateState({ loadingExercises: false });
     }
-  };
+  }, [fetchAllExercises, getSelectedExercises, handleError, updateState]);
 
   useEffect(() => {
-    fetchInitialExercises();
+    initializeExercises();
+
     return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
-
-  const toggleExercise = useCallback((exercise: Exercise) => {
-    if (!exercise?.id) {
-      console.error('Invalid exercise object:', exercise);
-      return;
-    }
-
-    setSelectedExercises(prev => {
-      const isSelected = prev.some(ex => ex.id === exercise.id);
-      
-      if (isSelected) {
-        return prev.filter(ex => ex.id !== exercise.id);
-      } else {
-        return [...prev, {
-          ...exercise,
-          sets: [{ weight: '', reps: '' }]
-        }];
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-    });
-  }, []);
+    };
+  }, [initializeExercises]);
 
-  const applyFilters = useCallback((filters: Record<string, string>) => {
-    if (!filters || Object.keys(filters).length === 0) {
-      setExercisesTypes(allExercises);
-      return;
-    }
+  // Filter Management
+  const applyFilters = useCallback((filters: ExerciseFilters = {}) => {
+    setState(prev => {
+      if (!filters || Object.keys(filters).length === 0) {
+        return { ...prev, exercisesTypes: prev.allExercises };
+      }
 
-    const filtered = allExercises.filter(exercise => {
-      return Object.entries(filters).every(([key, value]) => {
-        if (!value) return true;
-        const exerciseValue = exercise[key as keyof Exercise];
-        return typeof exerciseValue === 'string' && 
-               exerciseValue.toLowerCase() === value.toLowerCase();
-      });
-    });
-
-    setExercisesTypes(filtered);
-  }, [allExercises]);
-
-  const fetchExerciseDetails = useCallback(async (exerciseId: string): Promise<Exercise | null> => {
-    if (!exerciseId) {
-      console.error('No exercise ID provided');
-      return null;
-    }
-
-    setLoadingExercises(true);
-    
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const { exercise } = await exerciseApi.getExerciseDetails(
-        exerciseId,
-        abortControllerRef.current.signal
+      const filtered = prev.allExercises.filter(exercise =>
+        Object.entries(filters).every(([key, value]) => {
+          if (!value) return true;
+          const exerciseValue = String(exercise[key as keyof Exercise] || '').toLowerCase();
+          return exerciseValue === value.toLowerCase();
+        })
       );
 
-      const details = exerciseUtils.formatExercise(exercise);
-      
-      setExerciseDetails(prev => ({
-        ...prev,
-        [exerciseId]: details
-      }));
+      return { ...prev, exercisesTypes: filtered };
+    });
+  }, []);
 
-      return details;
-
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        console.log('Fetch aborted');
-        return null;
-      }
-      
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Error fetching exercise details:', errorMessage);
-      return null;
-    } finally {
-      setLoadingExercises(false);
+  // Selected Exercise Management
+  const handleSelectedExercisesUpdate = useCallback(async (newSelectedExercises: Exercise[]) => {
+    try {
+      await saveSelectedExercises(newSelectedExercises);
+      updateState({ selectedExercises: newSelectedExercises });
+    } catch (error) {
+      handleError(error);
     }
-  }, []);
+  }, [handleError, saveSelectedExercises, updateState]);
 
-  const addSetToExercise = useCallback((exerciseId: string) => {
-    setSelectedExercises(prev =>
-      prev.map(ex => {
-        if (ex.id === exerciseId) {
-          return {
-            ...ex,
-            sets: [...ex.sets, { weight: '', reps: '' }]
-          };
-        }
-        return ex;
-      })
-    );
-  }, []);
+  const toggleExercise = useCallback(async (exercise: Exercise) => {
+    if (!exercise?.id) return;
 
-  const removeSet = useCallback((exerciseId: string, setIndex: number) => {
-    setSelectedExercises(prev =>
-      prev.map(ex => {
-        if (ex.id === exerciseId) {
+    setState(prev => {
+      const isSelected = prev.selectedExercises.some(ex => ex.id === exercise.id);
+      const newSelectedExercises = isSelected
+        ? prev.selectedExercises.filter(ex => ex.id !== exercise.id)
+        : [...prev.selectedExercises, { ...exercise, sets: [{ weight: '', reps: '' }] }];
+
+      handleSelectedExercisesUpdate(newSelectedExercises);
+      return { ...prev, selectedExercises: newSelectedExercises };
+    });
+  }, [handleSelectedExercisesUpdate]);
+
+  // Set Management
+  const addSetToExercise = useCallback(async (exerciseId: string) => {
+    setState(prev => {
+      const newSelectedExercises = prev.selectedExercises.map(ex =>
+        ex.id === exerciseId
+          ? { ...ex, sets: [...(ex.sets || []), { weight: '', reps: '' }] }
+          : ex
+      );
+
+      handleSelectedExercisesUpdate(newSelectedExercises);
+      return { ...prev, selectedExercises: newSelectedExercises };
+    });
+  }, [handleSelectedExercisesUpdate]);
+
+  const removeSet = useCallback(async (exerciseId: string, setIndex: number) => {
+    setState(prev => {
+      const newSelectedExercises = prev.selectedExercises.map(ex => {
+        if (ex.id === exerciseId && Array.isArray(ex.sets)) {
           const newSets = [...ex.sets];
           newSets.splice(setIndex, 1);
           return {
@@ -161,57 +206,77 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({ children }) 
           };
         }
         return ex;
-      })
-    );
-  }, []);
+      });
 
-  const updateSet = useCallback((
+      handleSelectedExercisesUpdate(newSelectedExercises);
+      return { ...prev, selectedExercises: newSelectedExercises };
+    });
+  }, [handleSelectedExercisesUpdate]);
+
+  const updateSet = useCallback(async (
     exerciseId: string,
     setIndex: number,
-    field: 'weight' | 'reps',
+    field: string,
     value: string
   ) => {
-    setSelectedExercises(prev =>
-      prev.map(ex => {
-        if (ex.id === exerciseId) {
+    setState(prev => {
+      const newSelectedExercises = prev.selectedExercises.map(ex => {
+        if (ex.id === exerciseId && Array.isArray(ex.sets)) {
           const newSets = [...ex.sets];
           if (newSets[setIndex]) {
-            newSets[setIndex] = {
-              ...newSets[setIndex],
-              [field]: value
-            };
+            newSets[setIndex] = { ...newSets[setIndex], [field]: value };
           }
           return { ...ex, sets: newSets };
         }
         return ex;
-      })
-    );
-  }, []);
+      });
 
-  const clearSelectedExercises = useCallback(() => {
-    setSelectedExercises([]);
-  }, []);
+      handleSelectedExercisesUpdate(newSelectedExercises);
+      return { ...prev, selectedExercises: newSelectedExercises };
+    });
+  }, [handleSelectedExercisesUpdate]);
 
-  const value: ExerciseContextType = {
-    exercisesTypes,
-    allExercises,
-    selectedExercises,
-    loadingExercises,
-    error,
-    setSelectedExercises,
+  const clearSelectedExercises = useCallback(async () => {
+    try {
+      await saveSelectedExercises([]);
+      updateState({ selectedExercises: [] });
+    } catch (error) {
+      handleError(error);
+    }
+  }, [handleError, saveSelectedExercises, updateState]);
+
+  // Exercise Details Management
+  const getExerciseDetails = useCallback(async (id: string) => {
+    try {
+      const response = await fetchExerciseDetails(id);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    } catch (error) {
+      handleError(error);
+      return null;
+    }
+  }, [fetchExerciseDetails, handleError]);
+
+  const value = {
+    ...state,
+    loadingExercises: state.loadingExercises || serviceLoading,
+    setSelectedExercises: handleSelectedExercisesUpdate,
     applyFilters,
-    fetchExerciseDetails,
+    fetchExerciseDetails: getExerciseDetails,
     toggleExercise,
     clearSelectedExercises,
     addSetToExercise,
     removeSet,
-    updateSet,
-    exerciseDetails
+    updateSet
   };
 
-  return (
-    <ExerciseContext.Provider value={value}>
-      {children}
-    </ExerciseContext.Provider>
-  );
+  return <ExerciseContext.Provider value={value}>{children}</ExerciseContext.Provider>;
+};
+
+export const useExercises = (): ExerciseContextType => {
+  const context = useContext(ExerciseContext);
+  if (!context) {
+    throw new Error('useExercises must be used within an ExerciseProvider');
+  }
+  return context;
 };

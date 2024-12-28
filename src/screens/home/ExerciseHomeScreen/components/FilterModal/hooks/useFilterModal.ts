@@ -1,5 +1,6 @@
+// src/screens/home/ExerciseHomeScreen/components/FilterModal/useFilterModal.tsx
 import { useState, useCallback } from 'react';
-import { Filters, FilterOptionKey } from '../../../types/exercise.types';
+import type { Filters, FilterOptionKey } from '../../types/filter.types';
 
 interface UseFilterModalProps {
   initialFilters: Filters;
@@ -14,25 +15,21 @@ export const useFilterModal = ({
 }: UseFilterModalProps) => {
   const [localFilters, setLocalFilters] = useState<Filters>(initialFilters);
 
-  const handleFilterChange = useCallback((key: FilterOptionKey, option: string) => {
-    setLocalFilters(prev => ({
-      ...prev,
-      [key]: prev[key] === option ? null : option
-    }));
+  const handleFilterChange = useCallback((key: FilterOptionKey, value: string) => {
+    setLocalFilters((prev: Filters) => {
+      // Dacă valoarea este deja selectată, o deselectăm
+      if (prev[key] === value) {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      // Altfel, actualizăm valoarea
+      return { ...prev, [key]: value };
+    });
   }, []);
 
   const handleReset = useCallback(() => {
-    const emptyFilters: Filters = {
-      force: null,
-      level: null,
-      mechanic: null,
-      equipment: null,
-      category: null
-    };
-    setLocalFilters(emptyFilters);
-    onApplyFilters(emptyFilters);
-    onClose();
-  }, [onApplyFilters, onClose]);
+    setLocalFilters({});
+  }, []);
 
   const handleApply = useCallback(() => {
     onApplyFilters(localFilters);

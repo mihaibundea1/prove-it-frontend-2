@@ -4,71 +4,55 @@ import { StatusBar } from 'expo-status-bar';
 import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { useNavigation } from '@react-navigation/native';
 import { Exercise } from '@/types/exercise.types';
-import { useExercisePreloader } from '@/services/api/endpoints/exercise/hooks/useExercisePreloader';
+import { useExercises } from '@/contexts/ExerciseContext';
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
 import { ExerciseList } from './components/ExerciseList';
-import { FilterModal } from './components/FilterModal';
+import { FilterModal } from './components/FilterModal/index';
 import { CreateWorkoutButton } from '@/components/shared/CreateWorkoutButton';
 import { OverlayLoading } from '@/components/shared/OverlayLoading';
-import { Filters } from './types/exercise.types';
+import { Filters } from '@/services/api/endpoints/exercise/types/exercise.types';
 
 export const ExerciseHomeScreen: React.FC = () => {
+  // Local state
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilters, setActiveFilters] = useState<Filters>({});
-  const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
-
+  
   const navigation = useNavigation();
-  const { loadExercises, exercises, loading: loadingExercises, error } = useExercisePreloader();
+  
+  // Folosim contextul în loc de preloader
+  const { 
+    exercisesTypes,
+    allExercises,
+    selectedExercises,
+    loadingExercises,
+    error,
+    toggleExercise,
+    applyFilters
+  } = useExercises();
 
+  // Filtrăm exercițiile bazat pe search query
   const filteredExercises = useMemo(() => {
-    if (!Array.isArray(exercises)) {
-      return [];
-    }
+    if (!searchQuery) return exercisesTypes;
 
-    let filtered = [...exercises];
+    return exercisesTypes.filter(exercise =>
+      exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [exercisesTypes, searchQuery]);
 
-    // Apply filters
-    Object.entries(activeFilters).forEach(([key, value]) => {
-      if (!value) return;
-      
-      filtered = filtered.filter(exercise => {
-        const exerciseValue = exercise[key as keyof Exercise]?.toString().toLowerCase();
-        return exerciseValue === value.toLowerCase();
-      });
-    });
-
-    // Apply search
-    if (searchQuery) {
-      filtered = filtered.filter(exercise =>
-        exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    return filtered;
-  }, [exercises, activeFilters, searchQuery]);
-
+  // Handler pentru selectarea exercițiilor
   const handleExercisePress = useCallback((exercise: Exercise) => {
-    setSelectedExercises(prev => {
-      const isSelected = prev.some(ex => ex.id === exercise.id);
-      if (isSelected) {
-        return prev.filter(ex => ex.id !== exercise.id);
-      }
-      return [...prev, exercise];
-    });
-  }, []);
+    toggleExercise(exercise);
+  }, [toggleExercise]);
 
   const handleExerciseInfo = useCallback((exercise: Exercise) => {
-    // navigation.navigate('ExerciseDetailsScreen');
+    // navigation.navigate('ExerciseDetailsScreen', { exerciseId: exercise.id });
   }, [navigation]);
 
+  // Handler pentru aplicarea filtrelor
   const handleFilterApply = useCallback((newFilters: Filters) => {
-    setActiveFilters(prevFilters => ({
-      ...prevFilters,
-      ...newFilters
-    }));
-  }, []);
+    applyFilters(newFilters);
+  }, [applyFilters]);
 
   return (
     <View className="flex-1 bg-white">
@@ -99,8 +83,8 @@ export const ExerciseHomeScreen: React.FC = () => {
       <FilterModal
         visible={filterModalVisible}
         onClose={() => setFilterModalVisible(false)}
-        filters={activeFilters}
         onApplyFilters={handleFilterApply}
+        filters={{}} // Reset filters when modal opens
       />
 
       <OverlayLoading loading={loadingExercises} />
