@@ -11,6 +11,7 @@
   "dependencies": {
     "@clerk/clerk-expo": "^2.6.0",
     "@expo/metro-runtime": "~4.0.0",
+    "@react-native-async-storage/async-storage": "^2.1.0",
     "@react-navigation/bottom-tabs": "^6.5.16",
     "@react-navigation/core": "^7.3.1",
     "@react-navigation/native": "^6.1.18",
@@ -22,6 +23,7 @@
     "expo": "~52.0.18",
     "expo-image-picker": "~16.0.3",
     "expo-linear-gradient": "^14.0.1",
+    "expo-notifications": "^0.29.11",
     "expo-secure-store": "^14.0.0",
     "expo-status-bar": "~2.0.0",
     "expo-web-browser": "^14.0.1",
