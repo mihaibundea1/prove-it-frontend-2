@@ -75,9 +75,10 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
       }
 
       if (exercisesResponse.data) {
+        const exercises = parseExercises(exercisesResponse.data);
         updateState({
-          allExercises: exercisesResponse.data,
-          exercisesTypes: exercisesResponse.data,
+          allExercises: exercises,
+          exercisesTypes: exercises,
           selectedExercises: selectedResponse.data || [],
           loadingExercises: false
         });
@@ -96,6 +97,25 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
     }
   }, [fetchAllExercises, getSelectedExercises, onError, updateState]);
 
+  function parseExercises(data: any): Exercise[] {
+    return [
+      {
+        id: data.id,
+        title: data.title,
+        images: Array.isArray(data.image.uri) ? data.image.uri : [data.image.uri],
+        thumbnail: data.thumbnail.uri,
+        category: data.category,
+        equipment: data.equipment,
+        level: data.level,
+        force: data.force,
+        mechanic: data.mechanic,
+        primaryMuscles: Array.isArray(data.primary_muscles) ? data.primary_muscles : [data.primary_muscles],
+        secondaryMuscles: Array.isArray(data.secondary_muscles) ? data.secondary_muscles : [data.secondary_muscles],
+        instructions: Array.isArray(data.instructions) ? data.instructions : [data.instructions],
+        sets: []
+      }
+    ];
+  }
 
   // Data Loading
   const loadInitialData = useCallback(async () => {
