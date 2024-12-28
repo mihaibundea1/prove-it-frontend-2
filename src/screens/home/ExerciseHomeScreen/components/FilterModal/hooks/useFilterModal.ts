@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Filters, FilterOptionKey } from '../../../types';
+import { Filters, FilterOptionKey } from '../../../types/exercise.types';
 
 interface UseFilterModalProps {
   initialFilters: Filters;
