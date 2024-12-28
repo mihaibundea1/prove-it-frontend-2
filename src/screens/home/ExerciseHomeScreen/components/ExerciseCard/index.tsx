@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Image, Pressable, Animated } from 'react-
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { ChevronRightIcon } from 'lucide-react-native';
 import { styles } from './styles';
-import { ExerciseCardProps } from '../../types/exercise.types';
+import { ExerciseCardProps } from '@/types/exercise.types';
 
 const logoImage = require('../../../../../assets/logo_with_background_rounded.png');
 

@@ -1,115 +1,112 @@
-// utils/cache.utils.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SQLite from 'expo-sqlite';
 import { CACHE_CONSTANTS } from '../constants/cache.constants';
 
-const CHUNK_SIZE = 400 * 1024; // 400KB per chunk
+class SQLiteCache {
+  private dbPromise: Promise<SQLite.SQLiteDatabase>;
 
-export const cacheUtils = {
+  constructor() {
+    this.dbPromise = SQLite.openDatabaseAsync('app_cache.db');
+    this.initializeTables();
+    this.setupAutoCleanup();
+  }
+
+  private async initializeTables(): Promise<void> {
+    const db = await this.dbPromise;
+    
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(
+        `CREATE TABLE IF NOT EXISTS cache (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          timestamp INTEGER NOT NULL
+        );`
+      );
+    });
+  }
+
+  private async setupAutoCleanup(): Promise<void> {
+    const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+    const DAYS_TO_KEEP = 7; // Keep entries for 7 days
+
+    const performCleanup = async () => {
+      const db = await this.dbPromise;
+      const cutoffTimestamp = Date.now() - (DAYS_TO_KEEP * 24 * 60 * 60 * 1000);
+
+      await db.runAsync(
+        `DELETE FROM cache WHERE timestamp < ?;`,
+        [cutoffTimestamp]
+      );
+
+      console.log('Cache cleanup performed');
+    };
+
+    // Perform initial cleanup
+    await performCleanup();
+
+    // Set up periodic cleanup
+    setInterval(performCleanup, CLEANUP_INTERVAL);
+  }
+
   async get<T>(key: string): Promise<T | null> {
+    const db = await this.dbPromise;
     try {
-      // Verificăm dacă există chunk-uri
-      const chunkCountStr = await AsyncStorage.getItem(`${key}_chunk_count`);
+      const result = await db.getFirstAsync<{value: string, timestamp: number}>(
+        `SELECT value, timestamp FROM cache WHERE key = ?;`,
+        [key]
+      );
+
+      if (!result) return null;
+
+      // Check for expiration
+      const isExpired = Date.now() - result.timestamp > CACHE_CONSTANTS.EXPIRY_TIME;
       
-      if (!chunkCountStr) {
-        // Nu există chunk-uri, încercăm să citim direct
-        const data = await AsyncStorage.getItem(key);
-        if (!data) return null;
-        
-        const parsed = JSON.parse(data);
-        const isExpired = Date.now() - parsed.timestamp > CACHE_CONSTANTS.EXPIRY_TIME;
-        
-        return isExpired ? null : parsed.data;
+      if (isExpired) {
+        // Remove expired cache
+        await this.remove(key);
+        return null;
       }
 
-      // Avem chunk-uri, le reconstituim
-      const chunkCount = parseInt(chunkCountStr, 10);
-      let fullData = '';
-      
-      for (let i = 0; i < chunkCount; i++) {
-        const chunk = await AsyncStorage.getItem(`${key}_chunk_${i}`);
-        if (!chunk) throw new Error(`Missing chunk ${i}`);
-        fullData += chunk;
+      try {
+        return JSON.parse(result.value);
+      } catch (parseError) {
+        console.error('Cache parsing error:', parseError);
+        return null;
       }
-
-      const parsed = JSON.parse(fullData);
-      const isExpired = Date.now() - parsed.timestamp > CACHE_CONSTANTS.EXPIRY_TIME;
-      
-      return isExpired ? null : parsed.data;
     } catch (error) {
       console.error('Cache read error:', error);
       return null;
     }
-  },
+  }
 
   async set<T>(key: string, data: T): Promise<void> {
-    try {
-      const cacheData = {
-        data,
-        timestamp: Date.now()
-      };
+    const db = await this.dbPromise;
+    const serializedData = JSON.stringify({
+      data,
+      timestamp: Date.now()
+    });
 
-      const serializedData = JSON.stringify(cacheData);
-
-      // Dacă datele sunt prea mari, le împărțim în chunk-uri
-      if (serializedData.length > CHUNK_SIZE) {
-        const chunks = [];
-        for (let i = 0; i < serializedData.length; i += CHUNK_SIZE) {
-          chunks.push(serializedData.slice(i, i + CHUNK_SIZE));
-        }
-
-        // Salvăm numărul de chunk-uri
-        await AsyncStorage.setItem(`${key}_chunk_count`, String(chunks.length));
-
-        // Salvăm fiecare chunk
-        await Promise.all(
-          chunks.map((chunk, index) => 
-            AsyncStorage.setItem(`${key}_chunk_${index}`, chunk)
-          )
-        );
-      } else {
-        // Dacă datele sunt suficient de mici, le salvăm direct
-        await AsyncStorage.removeItem(`${key}_chunk_count`);
-        await AsyncStorage.setItem(key, serializedData);
-      }
-    } catch (error) {
-      console.error('Cache write error:', error);
-    }
-  },
+    await db.runAsync(
+      `INSERT OR REPLACE INTO cache (key, value, timestamp) VALUES (?, ?, ?);`,
+      [key, serializedData, Date.now()]
+    );
+  }
 
   async remove(key: string): Promise<void> {
-    try {
-      // Încercăm să ștergem chunk-urile dacă există
-      const chunkCountStr = await AsyncStorage.getItem(`${key}_chunk_count`);
-      if (chunkCountStr) {
-        const chunkCount = parseInt(chunkCountStr, 10);
-        const chunkKeys = Array.from(
-          { length: chunkCount },
-          (_, i) => `${key}_chunk_${i}`
-        );
-        
-        await AsyncStorage.multiRemove([
-          ...chunkKeys,
-          `${key}_chunk_count`
-        ]);
-      }
-
-      // Ștergem și cheia principală
-      await AsyncStorage.removeItem(key);
-    } catch (error) {
-      console.error('Cache remove error:', error);
-    }
-  },
+    const db = await this.dbPromise;
+    await db.runAsync(
+      `DELETE FROM cache WHERE key = ?;`,
+      [key]
+    );
+  }
 
   async clear(): Promise<void> {
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      const exerciseKeys = keys.filter(key => 
-        key.startsWith('exercises:') || 
-        key.includes('_chunk_')
-      );
-      await AsyncStorage.multiRemove(exerciseKeys);
-    } catch (error) {
-      console.error('Cache clear error:', error);
-    }
+    const db = await this.dbPromise;
+    await db.runAsync(
+      `DELETE FROM cache WHERE 
+        key LIKE 'exercises:%' OR 
+        key LIKE '%_chunk_%';`
+    );
   }
-};
+}
+
+export const cacheUtils = new SQLiteCache();
