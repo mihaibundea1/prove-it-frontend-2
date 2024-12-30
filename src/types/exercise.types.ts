@@ -63,3 +63,15 @@ export interface ExerciseContextType {
         value: string
     ) => void;
 }
+
+export interface ExerciseCardProps {
+    exercise: {
+      id: string;
+      title: string;
+      thumbnail: string | null;
+      images: string[];
+    };
+    onPress: () => void;
+    onInfoPress: () => void;
+    isSelected: boolean;
+  }
