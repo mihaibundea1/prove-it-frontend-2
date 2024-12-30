@@ -284,11 +284,11 @@ export class CacheManager {
         try {
             const response = await syncService.syncData(key, data);
 
-            if (!response.success) {
-                throw new Error(`Sync failed: ${response.error}`);
+            if (response.status !== 200) {
+                throw new Error(`Sync failed with status ${response.status}: ${response.error}`);
             }
 
-            if (response.data.conflicts) {
+            if (response.data && response.data.conflicts) {
                 await this.handleConflicts(key, data, response.data.conflicts);
             }
         } catch (error) {

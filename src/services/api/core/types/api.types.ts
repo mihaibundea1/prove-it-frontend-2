@@ -10,7 +10,6 @@ export interface ApiResponse<T> {
   data: T | null;
   error?: string;
   status: number;
-  success: boolean;
 }
 
 // Use InternalAxiosRequestConfig instead of AxiosRequestConfig for proper typing
