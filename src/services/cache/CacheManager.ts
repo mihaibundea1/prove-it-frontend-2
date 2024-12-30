@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
 import { LRUCache } from 'lru-cache';
 import NetInfo from '@react-native-community/netinfo';
+import { SyncService } from '../api/endpoints/sync/SyncService';
 
 export class CacheManager {
     private memoryCache: LRUCache<string, any>;
@@ -278,25 +279,21 @@ export class CacheManager {
     }
 
     private async syncWithServer(key: string, data: any): Promise<void> {
-        const response = await fetch('https://your-api.com/sync', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key,
-                data,
-                timestamp: Date.now(),
-            }),
-        });
+        const syncService = new SyncService();
 
-        if (!response.ok) {
-            throw new Error(`Sync failed: ${response.statusText}`);
-        }
+        try {
+            const response = await syncService.syncData(key, data);
 
-        const serverResponse = await response.json();
-        if (serverResponse.conflicts) {
-            await this.handleConflicts(key, data, serverResponse.conflicts);
+            if (!response.success) {
+                throw new Error(`Sync failed: ${response.error}`);
+            }
+
+            if (response.data.conflicts) {
+                await this.handleConflicts(key, data, response.data.conflicts);
+            }
+        } catch (error) {
+            console.error('Sync error:', error);
+            throw error;
         }
     }
 
