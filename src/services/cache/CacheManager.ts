@@ -23,7 +23,7 @@ export class CacheManager {
         };
 
         this.memoryCache = new LRUCache({
-            max: this.config.maxMemorySize * 1024 * 1024,
+            maxSize: this.config.maxMemorySize * 1024 * 1024,
             sizeCalculation: (value) =>
                 new TextEncoder().encode(JSON.stringify(value)).length,
         });
@@ -180,6 +180,7 @@ export class CacheManager {
     }
 
     private async setToDisk<T>(key: string, data: T): Promise<void> {
+        console.log('Saving to disk:', key, data);
         const db = await this.dbPromise;
         const serializedData = JSON.stringify({
             data,
@@ -218,20 +219,20 @@ export class CacheManager {
         );
     }
 
-    async sync(specificKeys?: string[]): Promise<void> {
+    private async sync(specificKeys?: string[]): Promise<void> {
         if (this.isSyncing || !this.networkAvailable) return;
-
+    
         this.isSyncing = true;
         try {
             const itemsToSync = await this.getItemsNeedingSync(specificKeys);
-
+    
             for (const item of itemsToSync) {
                 try {
                     const data = await this.get(item.key);
                     if (!data) continue;
-
+    
                     await this.syncWithServer(item.key, data);
-
+    
                     await this.updateSyncStatus(item.key, {
                         lastSynced: Date.now(),
                         needsSync: false,
@@ -239,15 +240,33 @@ export class CacheManager {
                     });
                 } catch (error) {
                     console.error(`Sync failed for ${item.key}:`, error);
-
+    
+                    // Increment the retry count if sync fails
                     await this.updateSyncStatus(item.key, {
                         retryCount: (item.retryCount || 0) + 1,
                     });
+    
+                    // If retry count exceeds max, stop retrying
+                    const syncMetadata = await this.getSyncMetadata(item.key);
+                    if (syncMetadata && (syncMetadata.retryCount ?? 0) >= this.config.maxRetryCount) {
+                        await this.updateSyncStatus(item.key, {
+                            needsSync: false
+                        });
+                    }
                 }
             }
         } finally {
             this.isSyncing = false;
         }
+    }
+
+    private async getSyncMetadata(key: string): Promise<SyncMetadata | null> {
+        const db = await this.dbPromise;
+        const result = await db.getFirstAsync<SyncMetadata>(
+            `SELECT * FROM sync_metadata WHERE key = ?`,
+            [key]
+        );
+        return result || null;
     }
 
     private async getItemsNeedingSync(specificKeys?: string[]): Promise<SyncMetadata[]> {
