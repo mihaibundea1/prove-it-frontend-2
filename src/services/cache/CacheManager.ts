@@ -13,12 +13,12 @@ export class CacheManager {
 
     constructor(config: Partial<CacheConfig> = {}) {
         this.config = {
-            maxMemorySize: 50,
-            maxDiskSize: 500,
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            cleanupInterval: 24 * 60 * 60 * 1000,
-            syncInterval: 5 * 60 * 1000,
-            maxRetryCount: 3,
+            maxMemorySize: 50, // Maximum size for memory cache in MB
+            maxDiskSize: 500,  // Maximum size for disk cache in MB
+            maxAge: 7 * 24 * 60 * 60 * 1000, // Cache age limit (7 days)
+            cleanupInterval: 24 * 60 * 60 * 1000, // Cleanup interval (1 day)
+            syncInterval: 5 * 60 * 1000, // Sync interval (5 minutes)
+            maxRetryCount: 3, // Max retries for syncing
             ...config,
         };
 

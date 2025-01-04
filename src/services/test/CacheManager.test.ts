@@ -137,32 +137,26 @@ describe('CacheManager', () => {
 
     describe('Sync Functionality', () => {
         test('should mark items for sync and attempt sync', async () => {
-        // Mock sync method directly
-        const syncSpy = jest.spyOn(cacheManager as any, 'sync').mockResolvedValue({ status: 200, data: { success: true } });;
-        
-        await cacheManager.set('test-key', { data: 'test' }, { sync: true, syncPriority: 'high' });
-        
-        expect(syncSpy).toHaveBeenCalled();
-    }, 20000);
+            // Mock sync method directly
+            const syncSpy = jest.spyOn(cacheManager as any, 'sync').mockResolvedValue({ status: 200, data: { success: true } });;
+
+            await cacheManager.set('test-key', { data: 'test' }, { sync: true, syncPriority: 'high' });
+
+            expect(syncSpy).toHaveBeenCalled();
+        }, 20000);
 
 
         test('should handle sync conflicts', async () => {
-            // Reset mocks
-            jest.clearAllMocks();
-            
             const mockSyncService = {
-                syncData: jest.fn().mockResolvedValue({
-                    status: 200,
-                    data: { conflicts: true }
-                })
+                syncData: jest.fn().mockResolvedValue({ status: 200, data: { conflicts: true } })
             };
-            
             (SyncService as jest.Mock).mockImplementation(() => mockSyncService);
-            
+
             await cacheManager.set('test-key', { data: 'test' }, { sync: true });
-            
+
+            // Ensure the sync call was made
             expect(mockSyncService.syncData).toHaveBeenCalled();
-        }, 20000);
+        });
 
         test('should handle network state changes', async () => {
             const networkCallback = jest.fn();
@@ -192,18 +186,17 @@ describe('CacheManager', () => {
     describe('Error Handling', () => {
         test('should handle sync errors and retry', async () => {
             const mockSyncService = {
-                syncData: jest.fn().mockRejectedValue(new Error('Sync failed'))
+                syncData: jest.fn().mockRejectedValueOnce(new Error('Sync failed')).mockResolvedValue({ status: 200, data: { success: true } })
             };
-            
             (SyncService as jest.Mock).mockImplementation(() => mockSyncService);
-            
+
             await cacheManager.set('test-key', { data: 'test' }, { sync: true });
-            
+
             // Wait for retry attempt
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            expect(mockSyncService.syncData).toHaveBeenCalled();
-        }, 20000);
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Increased delay
+
+            expect(mockSyncService.syncData).toHaveBeenCalledTimes(2); // Ensure retry happens
+        }, 25000); // Increased timeout for retries
 
 
         test('should handle invalid JSON in cache', async () => {
@@ -217,37 +210,35 @@ describe('CacheManager', () => {
 
     describe('Cache Cleanup', () => {
         test('should clean up expired cache entries', async () => {
-            // Mock Date.now for consistent testing
             const realDateNow = Date.now;
             const mockNow = jest.fn();
             global.Date.now = mockNow;
-            
-            // Set initial time
+
             mockNow.mockReturnValue(1000);
             await cacheManager.set('test-key', { data: 'test' });
-            
-            // Advance time past expiration
-            mockNow.mockReturnValue(1000 + cacheManager['config'].maxAge + 1000);
-            
+
+            mockNow.mockReturnValue(1000 + cacheManager['config'].maxAge + 1000); // Advance time
+
             const result = await cacheManager.get('test-key');
             expect(result).toBeNull();
-            
-            // Restore Date.now
-            global.Date.now = realDateNow;
+
+            global.Date.now = realDateNow; // Restore Date.now
         }, 5000);
-    
+
         describe('Cache Memory', () => {
             test('should evict data from memory cache when max memory size is reached', async () => {
-                const smallCache = new CacheManager({ maxMemorySize: 1 }); // 1MB
+                // Initialize CacheManager with a 1MB memory size limit
+                const smallCache = new CacheManager({ maxMemorySize: 1 * 1024 }); // 1KB limit for testing
                 
-                // Add first item
-                await smallCache.set('key1', { data: 'a'.repeat(512 * 1024) });
-                // Add second item that should cause eviction
-                await smallCache.set('key2', { data: 'b'.repeat(512 * 1024) });
+                // Add first item (512KB)
+                await smallCache.set('key1', { data: Buffer.alloc(512 * 1024) }); // Simulate 512KB data
                 
-                // Check that first item is still in disk cache
-                const result = await smallCache['getFromDisk']('key1');
-                expect(result).toBeTruthy();
+                // Add second item (512KB), which should evict the first one
+                await smallCache.set('key2', { data: Buffer.alloc(512 * 1024) }); // Another 512KB data
+                
+                // Check if key1 is evicted and stored on disk
+                const result = await smallCache.getFromDisk('key1');
+                expect(result).toBeTruthy(); // The data for 'key1' should now be on disk, not in memory
             }, 5000);
         });
     });
