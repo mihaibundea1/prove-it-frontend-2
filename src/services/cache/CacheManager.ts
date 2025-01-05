@@ -6,7 +6,7 @@ import { SyncService } from '../api/endpoints/sync/SyncService';
 
 export class CacheManager {
     private static instance: CacheManager | null = null;
-    private memoryCache: LRUCache<string, any>;
+    private memoryCache;
     private dbPromise: Promise<SQLite.SQLiteDatabase>;
     private config: CacheConfig;
     private isSyncing: boolean = false;
@@ -34,7 +34,7 @@ export class CacheManager {
 
         this.memoryCache = new LRUCache({
             maxSize: this.config.maxMemorySize * 1024 * 1024,
-            sizeCalculation: (value) => {
+            sizeCalculation: (value: any) => {
                 if (value instanceof Buffer) {
                     return value.length; // For Buffer, return actual byte length
                 }

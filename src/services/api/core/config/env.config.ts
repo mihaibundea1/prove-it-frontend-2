@@ -16,5 +16,5 @@ interface AppConfig {
   };
   
   export const Config: AppConfig = {
-    apiUrl: getValidatedEnvVar(ENV, 'EXPO_PUBLIC_API_URL'),
+    apiUrl: getValidatedEnvVar(ENV, 'apiUrl'),
   };
