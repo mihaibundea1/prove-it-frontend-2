@@ -10,26 +10,38 @@ export class CacheManager {
     private config: CacheConfig;
     private isSyncing: boolean = false;
     private networkAvailable: boolean = true;
+    private syncData: SyncDataFunction;
+    private static readonly DEFAULT_CONFIG: CacheConfig = {
+        maxMemorySize: 50,      // MB
+        maxDiskSize: 500,       // MB
+        maxAge: 7 * 24 * 60 * 60 * 1000,      // 7 zile
+        cleanupInterval: 24 * 60 * 60 * 1000,  // 1 zi
+        syncInterval: 5 * 60 * 1000,           // 5 minute
+        maxRetryCount: 3
+    };
 
-    constructor(config: Partial<CacheConfig> = {}) {
+    constructor(
+        config: Partial<CacheConfig> = {},
+        syncData: SyncDataFunction = new SyncService().syncData
+    ) {
         this.config = {
-            maxMemorySize: 50, // Maximum size for memory cache in MB
-            maxDiskSize: 500,  // Maximum size for disk cache in MB
-            maxAge: 7 * 24 * 60 * 60 * 1000, // Cache age limit (7 days)
-            cleanupInterval: 24 * 60 * 60 * 1000, // Cleanup interval (1 day)
-            syncInterval: 5 * 60 * 1000, // Sync interval (5 minutes)
-            maxRetryCount: 3, // Max retries for syncing
-            ...config,
+            ...CacheManager.DEFAULT_CONFIG,
+            ...config
         };
 
         this.memoryCache = new LRUCache({
             maxSize: this.config.maxMemorySize * 1024 * 1024,
-            sizeCalculation: (value) =>
-                new TextEncoder().encode(JSON.stringify(value)).length,
+            sizeCalculation: (value) => {
+                if (value instanceof Buffer) {
+                    return value.length; // For Buffer, return actual byte length
+                }
+                return new TextEncoder().encode(JSON.stringify(value)).length;
+            },
         });
 
         this.dbPromise = SQLite.openDatabaseAsync('cache.db');
 
+        this.syncData = syncData;  // Folosește funcția de sincronizare injectată
         this.initialize();
     }
 
@@ -226,6 +238,13 @@ export class CacheManager {
         try {
             const itemsToSync = await this.getItemsNeedingSync(specificKeys);
     
+            // Sort items by priority (high priority first)
+            itemsToSync.sort((a, b) => {
+                if (a.syncPriority === 'high' && b.syncPriority !== 'high') return -1;
+                if (a.syncPriority !== 'high' && b.syncPriority === 'high') return 1;
+                return (a.lastSynced ?? 0) < (b.lastSynced ?? 0) ? -1 : 1;
+            });
+    
             for (const item of itemsToSync) {
                 try {
                     const data = await this.get(item.key);
@@ -250,14 +269,21 @@ export class CacheManager {
                     const syncMetadata = await this.getSyncMetadata(item.key);
                     if (syncMetadata && (syncMetadata.retryCount ?? 0) >= this.config.maxRetryCount) {
                         await this.updateSyncStatus(item.key, {
-                            needsSync: false
+                            needsSync: false,
                         });
+                    } else {
+                        // Implement retry delay
+                        await this.retryDelay();
                     }
                 }
             }
         } finally {
             this.isSyncing = false;
         }
+    }
+
+    private async retryDelay(): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
     }
 
     private async getSyncMetadata(key: string): Promise<SyncMetadata | null> {
@@ -298,10 +324,9 @@ export class CacheManager {
     }
 
     private async syncWithServer(key: string, data: any): Promise<void> {
-        const syncService = new SyncService();
 
         try {
-            const response = await syncService.syncData(key, data);
+            const response = await this.syncData(key, data);
 
             if (response.status !== 200) {
                 throw new Error(`Sync failed with status ${response.status}: ${response.error}`);
@@ -328,7 +353,7 @@ export class CacheManager {
         );
     }
 
-    private async handleConflicts(key: string, localData: any, serverData: any): Promise<void> {
+    public async handleConflicts(key: string, localData: any, serverData: any): Promise<void> {
         await this.set(key, serverData, { sync: false });
     }
 

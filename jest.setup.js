@@ -1,6 +1,6 @@
 global.console = {
-  ...console,
-  log: jest.fn()
+    ...console,
+    log: jest.fn().mockImplementation(console.log)
 };
 
 jest.mock('nativewind', () => ({

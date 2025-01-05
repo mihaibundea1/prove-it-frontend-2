@@ -23,3 +23,5 @@ interface SyncMetadata {
     retryCount: number;
     syncPriority: 'high' | 'low';
 }
+
+type SyncDataFunction = (key: string, data: any) => Promise<{ status: number, data: any, error?: string }>;

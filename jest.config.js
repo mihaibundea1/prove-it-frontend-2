@@ -9,5 +9,7 @@ module.exports = {
     },
     transform: {
       '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.test.config.js' }]
-    }
+    },
+    verbose: true,
+    silent: false,  // Ensure logs are printed
   };
