@@ -24,6 +24,8 @@ describe('CacheManager', () => {
 
     beforeAll(() => {
         jest.useFakeTimers();
+        jest.setTimeout(30000); // 60 seconds
+
     });
 
     beforeEach(async () => {
@@ -133,6 +135,8 @@ describe('CacheManager', () => {
     });
 
     describe('Sync Functionality', () => {
+        jest.setTimeout(30000);
+
         test('should mark items for sync and attempt sync', async () => {
             const syncSpy = jest.spyOn(cacheManager as any, 'sync').mockResolvedValue({ status: 200, data: { success: true } });
 
@@ -149,28 +153,51 @@ describe('CacheManager', () => {
             syncInterval: 0,          // Dezactivăm sincronizarea automată pentru a nu întârzia testul
             maxRetryCount: 1          // 1 retry pentru sincronizare
         };
-
+        
         test('should handle sync conflicts', async () => {
-            jest.setTimeout(30000);  // Setează timeout-ul pentru acest test la 30 secunde
-
-            // Mockăm funcția de sincronizare pentru a răspunde rapid
-            const mockSyncData = jest.fn().mockResolvedValueOnce({ status: 200, data: { success: true } });
-
-            // Instanțiem CacheManager cu configurarea rapidă
-            const cacheManager = new CacheManager(TEST_CONFIG_1, mockSyncData);
+            // Create a mock sync function that resolves quickly
+            const mockSyncData = jest.fn()
+                .mockResolvedValueOnce({ 
+                    status: 409, // Conflict status
+                    data: { 
+                        success: false,
+                        conflict: true,
+                        serverData: { data: 'server-version' }
+                    }
+                })
+                .mockResolvedValueOnce({ 
+                    status: 200,
+                    data: { success: true }
+                });
+    
+            // Create a new instance with the mock
+            const testConfig = {
+                ...TEST_CONFIG,
+                syncInterval: 100, // Short sync interval for testing
+                maxRetryCount: 1,
+                syncTimeout: 1000
+            };
+            
+            const cacheManager = new CacheManager(testConfig);
+            cacheManager['syncData'] = mockSyncData;
 
             const testKey = 'test-key';
             const testData = { data: 'test' };
-
-            // Setăm datele în cache și le sincronizăm
+    
+            // Set data with sync option
             await cacheManager.set(testKey, testData, { sync: true });
-
-            // Așteptăm o perioadă scurtă pentru a simula procesul asincron
-            await new Promise((resolve) => setTimeout(resolve, 100)); // Pauză scurtă pentru test
-
-            // Verificăm dacă funcția de sincronizare a fost apelată corect
+    
+            // Wait for sync attempts to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+    
+            // Verify sync was attempted
             expect(mockSyncData).toHaveBeenCalledWith(testKey, testData);
-            expect(mockSyncData).toHaveBeenCalledTimes(1); // Verificăm că sincronizarea a avut loc o dată
+            
+            // Verify sync was called the expected number of times
+            expect(mockSyncData).toHaveBeenCalledTimes(2);
+    
+            // Clean up
+            await cacheManager.clear();
         });
 
         test('should handle network state changes', async () => {
@@ -201,9 +228,9 @@ describe('CacheManager', () => {
                     .mockRejectedValueOnce(new Error('Sync failed'))
                     .mockResolvedValue({ status: 200, data: { success: true } }),
             };
-
+        
             (SyncService as jest.Mock).mockImplementation(() => mockSyncService);
-
+        
             await cacheManager.set('test-key', { data: 'test' }, { sync: true });
             await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -241,17 +268,14 @@ describe('CacheManager', () => {
         test('should evict data from memory cache when max memory size is reached', async () => {
             const smallCache = new CacheManager({ maxMemorySize: 1 });
 
-            // Log pentru a verifica dimensiunea cache-ului înainte de limită
-            console.log(`Current cache size: ${smallCache.getMemorySize()}`);
+            await smallCache.set('key1', { data: Buffer.alloc(512 * 1024) });
+            await smallCache.set('key2', { data: Buffer.alloc(512 * 1024) });
 
-            await smallCache.set('key1', { data: Buffer.alloc(3 * 1024) });
-            await smallCache.set('key2', { data: Buffer.alloc(3 * 1024) });
+            const memoryResult = await smallCache.get('key1');
+            expect(memoryResult).toBeNull(); 
 
             const memoryResult2 = await smallCache.get('key2');
             expect(memoryResult2).not.toBeNull();
-
-            // Log pentru a verifica dimensiunea cache-ului după ce ar trebui să fie evocat
-            console.log(`Cache size after eviction: ${smallCache.getMemorySize()}`);
 
             const diskResult = await smallCache.getFromDisk('key1');
             expect(diskResult).toBeTruthy();

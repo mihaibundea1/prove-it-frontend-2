@@ -17,7 +17,9 @@ export class CacheManager {
         maxAge: 7 * 24 * 60 * 60 * 1000,      // 7 zile
         cleanupInterval: 24 * 60 * 60 * 1000,  // 1 zi
         syncInterval: 5 * 60 * 1000,           // 5 minute
-        maxRetryCount: 3
+        maxRetryCount: 3,
+        syncTimeout: 25000,  // 25 seconds default
+
     };
 
     constructor(
@@ -232,26 +234,47 @@ export class CacheManager {
     }
 
     private async sync(specificKeys?: string[]): Promise<void> {
+        // Add timeout handling
         if (this.isSyncing || !this.networkAvailable) return;
-    
+
+        this.isSyncing = true;
+        try {
+            await this.withTimeout(
+                this._performSync(specificKeys),
+                this.config.syncTimeout,
+                'Sync operation'
+            );
+
+        }
+        catch {
+            console.log("error when syncing");
+        }
+        finally {
+            this.isSyncing = false;
+        }
+    }
+
+    private async _performSync(specificKeys?: string[]): Promise<void> {
+        if (this.isSyncing || !this.networkAvailable) return;
+
         this.isSyncing = true;
         try {
             const itemsToSync = await this.getItemsNeedingSync(specificKeys);
-    
+
             // Sort items by priority (high priority first)
             itemsToSync.sort((a, b) => {
                 if (a.syncPriority === 'high' && b.syncPriority !== 'high') return -1;
                 if (a.syncPriority !== 'high' && b.syncPriority === 'high') return 1;
                 return (a.lastSynced ?? 0) < (b.lastSynced ?? 0) ? -1 : 1;
             });
-    
+
             for (const item of itemsToSync) {
                 try {
                     const data = await this.get(item.key);
                     if (!data) continue;
-    
+
                     await this.syncWithServer(item.key, data);
-    
+
                     await this.updateSyncStatus(item.key, {
                         lastSynced: Date.now(),
                         needsSync: false,
@@ -259,12 +282,12 @@ export class CacheManager {
                     });
                 } catch (error) {
                     console.error(`Sync failed for ${item.key}:`, error);
-    
+
                     // Increment the retry count if sync fails
                     await this.updateSyncStatus(item.key, {
                         retryCount: (item.retryCount || 0) + 1,
                     });
-    
+
                     // If retry count exceeds max, stop retrying
                     const syncMetadata = await this.getSyncMetadata(item.key);
                     if (syncMetadata && (syncMetadata.retryCount ?? 0) >= this.config.maxRetryCount) {
@@ -280,6 +303,23 @@ export class CacheManager {
         } finally {
             this.isSyncing = false;
         }
+    }
+
+    private async withTimeout<T>(
+        promise: Promise<T>,
+        timeoutMs: number = this.config.syncTimeout,
+        operation: string = 'Operation'
+    ): Promise<T> {
+        const timeoutPromise = new Promise<T>((_, reject) => {
+            setTimeout(() => {
+                reject(new Error(`${operation} timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+        });
+
+        return Promise.race([
+            promise,
+            timeoutPromise
+        ]);
     }
 
     private async retryDelay(): Promise<void> {
@@ -353,12 +393,42 @@ export class CacheManager {
         );
     }
 
-    public async handleConflicts(key: string, localData: any, serverData: any): Promise<void> {
-        await this.set(key, serverData, { sync: false });
-    }
 
     private toSnakeCase(str: string): string {
         return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    }
+
+    public async handleConflicts(key: string, localData: any, serverData: any): Promise<void> {
+        // Add proper conflict resolution
+        try {
+            // Log the conflict
+            console.log(`Conflict detected for key ${key}`);
+            console.log('Local data:', localData);
+            console.log('Server data:', serverData);
+
+            // You might want to implement a more sophisticated merge strategy
+            // For now, we'll keep server version but also store conflict info
+            await this.set(key, serverData, {
+                sync: false,
+                persist: true,
+                priority: 'high'
+            });
+
+            // Optionally store conflict metadata
+            await this.set(`${key}_conflict`, {
+                timestamp: Date.now(),
+                localData,
+                serverData
+            }, { persist: true });
+
+        } catch (error) {
+            console.error('Error handling conflict:', error);
+            throw error;
+        }
+    }
+
+    public getMemorySize(): number {
+        return this.memoryCache.size;
     }
 
     async forceSyncItems(keys: string[]): Promise<void> {

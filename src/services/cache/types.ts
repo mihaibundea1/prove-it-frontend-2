@@ -6,6 +6,7 @@ interface CacheConfig {
     cleanupInterval: number;
     syncInterval: number;
     maxRetryCount: number;
+    syncTimeout: number;  // milliseconds
 }
 
 interface CacheEntry {
