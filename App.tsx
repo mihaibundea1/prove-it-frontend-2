@@ -6,7 +6,6 @@ import Constants from 'expo-constants';
 import { tokenCache } from './src/utils/tokenCache';
 import AppNavigator from './src/navigation/AppNavigator';
 // Cache database - sqlite
-import '@/services/api/endpoints/exercise/utils/cache.utils'; // This will run the initialization
 
 export default function App() {
   const publishableKey = Constants.expoConfig?.extra?.clerkPublishableKey;

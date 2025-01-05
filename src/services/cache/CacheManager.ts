@@ -5,6 +5,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { SyncService } from '../api/endpoints/sync/SyncService';
 
 export class CacheManager {
+    private static instance: CacheManager | null = null;
     private memoryCache: LRUCache<string, any>;
     private dbPromise: Promise<SQLite.SQLiteDatabase>;
     private config: CacheConfig;
@@ -45,6 +46,14 @@ export class CacheManager {
 
         this.syncData = syncData;  // Folosește funcția de sincronizare injectată
         this.initialize();
+    }
+
+    // Instanța unică (Singleton)
+    public static getInstance(config?: Partial<CacheConfig>, syncData?: SyncDataFunction): CacheManager {
+        if (!CacheManager.instance) {
+            CacheManager.instance = new CacheManager(config, syncData);
+        }
+        return CacheManager.instance;
     }
 
     private async initialize(): Promise<void> {
