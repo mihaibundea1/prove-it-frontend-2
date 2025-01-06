@@ -37,12 +37,12 @@ const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
   const animation = useMemo(() => {
     return Animated.parallel([
       Animated.timing(fadeAnim, {
-        toValue: isSelected || isHighlightedRef.current ? 1 : 0,
+        toValue: isSelected ? 1 : 0,  // Remove isHighlightedRef.current
         duration: 100,
         useNativeDriver: false,
       }),
       Animated.timing(widthAnim, {
-        toValue: isSelected || isHighlightedRef.current ? 1 : 0,
+        toValue: isSelected ? 1 : 0,  // Remove isHighlightedRef.current
         duration: 100,
         useNativeDriver: false,
       })

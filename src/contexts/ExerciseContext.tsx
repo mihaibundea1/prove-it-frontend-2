@@ -196,21 +196,14 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
 
   const toggleExercise = useCallback(async (exercise: Exercise) => {
     if (!exercise?.id) return;
-
-    setState(prev => {
-      const isSelected = prev.selectedExercises.some(ex => ex.id === exercise.id);
-      const newSelectedExercises = isSelected
-        ? prev.selectedExercises.filter(ex => ex.id !== exercise.id)
-        : [...prev.selectedExercises, { ...exercise, sets: [{ weight: '', reps: '' }] }];
-
-      if (JSON.stringify(prev.selectedExercises) === JSON.stringify(newSelectedExercises)) {
-        return prev; // Prevent redundant state update
-      }
-
-      handleSelectedExercisesUpdate(newSelectedExercises);
-      return { ...prev, selectedExercises: newSelectedExercises };
-    });
-  }, [handleSelectedExercisesUpdate]);
+    
+    const newSelectedExercises = state.selectedExercises.some(ex => ex.id === exercise.id)
+      ? state.selectedExercises.filter(ex => ex.id !== exercise.id)
+      : [...state.selectedExercises, { ...exercise, sets: [{ weight: '', reps: '' }] }];
+      
+    updateState({ selectedExercises: newSelectedExercises });
+    await saveSelectedExercises(newSelectedExercises);
+  }, [state.selectedExercises, updateState, saveSelectedExercises]);
 
   // Set Management
   const addSetToExercise = useCallback(async (exerciseId: string) => {
