@@ -31,8 +31,23 @@ module.exports = {
       clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
     },
     scheme: "your-app-scheme",
-    "plugins": [
-      "expo-sqlite"
+    plugins: [
+      [
+        "expo-sqlite", // Plugin name
+        {
+          enableFTS: true,
+          useSQLCipher: true,
+          android: {
+            enableFTS: false, // Android-specific configuration
+            useSQLCipher: false
+          },
+          ios: {
+            customBuildFlags: [
+              "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1" // iOS-specific configuration
+            ]
+          }
+        }
+      ]
     ]
   }
 };
