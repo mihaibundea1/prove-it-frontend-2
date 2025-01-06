@@ -35,9 +35,6 @@ export class CacheManager {
         this.memoryCache = new LRUCache({
             maxSize: this.config.maxMemorySize * 1024 * 1024,
             sizeCalculation: (value: any) => {
-                if (value instanceof Buffer) {
-                    return value.length; // For Buffer, return actual byte length
-                }
                 return new TextEncoder().encode(JSON.stringify(value)).length;
             },
         });
