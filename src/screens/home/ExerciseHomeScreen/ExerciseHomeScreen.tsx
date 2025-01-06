@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { useNavigation } from '@react-navigation/native';
@@ -14,14 +14,12 @@ import { OverlayLoading } from '@/components/shared/OverlayLoading';
 import { Filters } from '@/services/api/endpoints/exercise/types/exercise.types';
 
 export const ExerciseHomeScreen: React.FC = () => {
-  // Local state
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const navigation = useNavigation();
-  
-  // Folosim contextul în loc de preloader
-  const { 
+
+  const {
     exercisesTypes,
     allExercises,
     selectedExercises,
@@ -31,16 +29,13 @@ export const ExerciseHomeScreen: React.FC = () => {
     applyFilters
   } = useExercises();
 
-  // Filtrăm exercițiile bazat pe search query
   const filteredExercises = useMemo(() => {
-    if (!searchQuery) return exercisesTypes;
-
-    return exercisesTypes.filter(exercise =>
+    if (!searchQuery) return allExercises;
+    return allExercises.filter(exercise =>
       exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [exercisesTypes, searchQuery]);
+  }, [allExercises, searchQuery]);
 
-  // Handler pentru selectarea exercițiilor
   const handleExercisePress = useCallback((exercise: Exercise) => {
     toggleExercise(exercise);
   }, [toggleExercise]);
@@ -49,7 +44,6 @@ export const ExerciseHomeScreen: React.FC = () => {
     // navigation.navigate('ExerciseDetailsScreen', { exerciseId: exercise.id });
   }, [navigation]);
 
-  // Handler pentru aplicarea filtrelor
   const handleFilterApply = useCallback((newFilters: Filters) => {
     applyFilters(newFilters);
   }, [applyFilters]);
@@ -57,34 +51,23 @@ export const ExerciseHomeScreen: React.FC = () => {
   return (
     <View className="flex-1 bg-white">
       <StatusBar style="dark" />
-      <FlatList
-        ListHeaderComponent={
-          <>
-            <Header />
-            <SearchBar 
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </>
-        }
-        data={[{ key: 'content' }]}
-        renderItem={() => (
-          <ExerciseList
-            exercises={filteredExercises}
-            selectedExercises={selectedExercises}
-            onExercisePress={handleExercisePress}
-            onExerciseInfo={handleExerciseInfo}
-            onFilterPress={() => setFilterModalVisible(true)}
-          />
-        )}
-        contentContainerStyle={{ paddingBottom: hp(2) }}
+      <Header />
+      <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+
+      {/* Render exercises */}
+      <ExerciseList
+        exercises={filteredExercises}
+        selectedExercises={selectedExercises}
+        onExercisePress={handleExercisePress}
+        onExerciseInfo={handleExerciseInfo}
+        onFilterPress={() => setFilterModalVisible(true)}
       />
 
       <FilterModal
         visible={filterModalVisible}
         onClose={() => setFilterModalVisible(false)}
         onApplyFilters={handleFilterApply}
-        filters={{}} // Reset filters when modal opens
+        filters={{}}
       />
 
       <OverlayLoading loading={loadingExercises} />
@@ -95,7 +78,7 @@ export const ExerciseHomeScreen: React.FC = () => {
         </View>
       )}
 
-      <CreateWorkoutButton 
+      <CreateWorkoutButton
         selectedCount={selectedExercises.length}
         onPress={() => navigation.navigate('CreateWorkoutScreen' as never)}
       />

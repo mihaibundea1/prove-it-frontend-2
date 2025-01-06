@@ -8,7 +8,7 @@ export interface ApiErrorResponse {
 
 export interface ApiResponse<T> {
   data: T | null;
-  error?: string;
+  error?: string | undefined;
   status: number;
 }
 
