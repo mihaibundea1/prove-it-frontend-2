@@ -7,7 +7,7 @@ import { ExerciseCardProps } from '@/types/exercise.types';
 
 const logoImage = require('../../../../../assets/logo_with_background_rounded.png');
 
-export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ 
+const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ 
   exercise, 
   onPress, 
   onInfoPress, 
@@ -83,7 +83,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      className="relative"
+      style={{ position: 'relative' }}
     >
       <Animated.View
         style={[styles.container, { transform: [{ translateX: translateXAnim }] }]}
@@ -100,25 +100,38 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
             }
           ]}
         />
+        
+        {/* Image section */}
         <Image
           source={imageSource}
-          className="w-[15%] h-[15%] rounded-full mr-4 bg-gray-100"
+          style={{
+            width: hp(8), // Adjust the size of the image
+            height: hp(8), // Adjust the size of the image
+            borderRadius: hp(4), // Make the image circular
+            marginRight: wp(4),
+            backgroundColor: 'gray', // fallback color when loading
+          }}
           onError={handleImageError}
-          defaultSource={logoImage}
         />
-        <View className="flex-1">
+        
+        <View style={{ flex: 1 }}>
           <Text
-            className="text-black font-bold"
-            style={{ fontSize: hp(2) }}
+            style={{
+              fontSize: hp(2),
+              fontWeight: 'bold',
+              color: 'black',
+            }}
             numberOfLines={2}
           >
             {capitalizedTitle}
           </Text>
         </View>
-        <TouchableOpacity onPress={onInfoPress} className="p-2">
+        
+        <TouchableOpacity onPress={onInfoPress} style={{ padding: wp(2) }}>
           <ChevronRightIcon size={hp(4)} color="gray" />
         </TouchableOpacity>
       </Animated.View>
     </Pressable>
   );
 });
+export { ExerciseCard };
