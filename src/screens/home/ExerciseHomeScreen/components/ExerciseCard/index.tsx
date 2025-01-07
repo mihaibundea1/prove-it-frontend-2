@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, Pressable, Animated } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { ChevronRightIcon } from 'lucide-react-native';
@@ -7,15 +7,15 @@ import { ExerciseCardProps } from '@/types/exercise.types';
 
 const logoImage = require('../../../../../assets/logo_with_background_rounded.png');
 
-export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ 
-  exercise,
+const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ 
+  exercise, 
   onPress, 
   onInfoPress, 
   isSelected 
 }) => {
-  const [isHighlighted, setIsHighlighted] = useState(false);
+  const isHighlightedRef = useRef(false); // Ref for tracking highlight state without causing re-renders
   const [imageLoadError, setImageLoadError] = useState(false);
-  
+
   const translateXAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const widthAnim = useRef(new Animated.Value(0)).current;
@@ -25,37 +25,37 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
     return exercise.title.charAt(0).toUpperCase() + exercise.title.slice(1);
   }, [exercise.title]);
 
-  // Determine image source
+  // Memoize image source to avoid recomputing on each render
   const imageSource = useMemo(() => {
-    if (imageLoadError) {
-      return logoImage;
-    }
-    if (exercise.thumbnail) {
-      return { uri: exercise.thumbnail };
-    }
-    if (exercise.images?.[0]) {
-      return { uri: exercise.images[0] };
-    }
+    if (imageLoadError) return logoImage;
+    if (exercise.thumbnail) return { uri: exercise.thumbnail };
+    if (exercise.images?.[0]) return { uri: exercise.images[0] };
     return logoImage;
   }, [exercise.thumbnail, exercise.images, imageLoadError]);
 
-  useEffect(() => {
-    Animated.parallel([
+  // Combine the animations and memoize it
+  const animation = useMemo(() => {
+    return Animated.parallel([
       Animated.timing(fadeAnim, {
-        toValue: isSelected || isHighlighted ? 1 : 0,
+        toValue: isSelected ? 1 : 0,  // Remove isHighlightedRef.current
         duration: 100,
         useNativeDriver: false,
       }),
       Animated.timing(widthAnim, {
-        toValue: isSelected || isHighlighted ? 1 : 0,
+        toValue: isSelected ? 1 : 0,  // Remove isHighlightedRef.current
         duration: 100,
         useNativeDriver: false,
       })
-    ]).start();
-  }, [isSelected, isHighlighted, fadeAnim, widthAnim]);
+    ]);
+  }, [isSelected, fadeAnim, widthAnim]);
+
+  // Trigger animation when selection or highlight changes
+  useEffect(() => {
+    animation.start();
+  }, [animation]);
 
   const handlePressIn = useCallback(() => {
-    setIsHighlighted(true);
+    isHighlightedRef.current = true;
     Animated.timing(translateXAnim, {
       toValue: wp(1),
       duration: 100,
@@ -64,7 +64,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
   }, [translateXAnim]);
 
   const handlePressOut = useCallback(() => {
-    setIsHighlighted(false);
+    isHighlightedRef.current = false;
     Animated.timing(translateXAnim, {
       toValue: 0,
       duration: 100,
@@ -73,21 +73,20 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
   }, [translateXAnim]);
 
   const handleImageError = useCallback(() => {
-    setImageLoadError(true);
-  }, []);
+    if (!imageLoadError) {
+      setImageLoadError(true);
+    }
+  }, [imageLoadError]);
 
   return (
     <Pressable
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      className="relative"
+      style={{ position: 'relative' }}
     >
       <Animated.View
-        style={[
-          styles.container,
-          { transform: [{ translateX: translateXAnim }] }
-        ]}
+        style={[styles.container, { transform: [{ translateX: translateXAnim }] }]}
       >
         <Animated.View
           style={[
@@ -101,28 +100,38 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
             }
           ]}
         />
+        
+        {/* Image section */}
         <Image
           source={imageSource}
-          className="w-[15%] h-[15%] rounded-full mr-4 bg-gray-100"
+          style={{
+            width: hp(8), // Adjust the size of the image
+            height: hp(8), // Adjust the size of the image
+            borderRadius: hp(4), // Make the image circular
+            marginRight: wp(4),
+            backgroundColor: 'gray', // fallback color when loading
+          }}
           onError={handleImageError}
-          defaultSource={logoImage}
         />
-        <View className="flex-1">
+        
+        <View style={{ flex: 1 }}>
           <Text
-            className="text-black font-bold"
-            style={{ fontSize: hp(2) }}
+            style={{
+              fontSize: hp(2),
+              fontWeight: 'bold',
+              color: 'black',
+            }}
             numberOfLines={2}
           >
             {capitalizedTitle}
           </Text>
         </View>
-        <TouchableOpacity 
-          onPress={onInfoPress} 
-          className="p-2"
-        >
+        
+        <TouchableOpacity onPress={onInfoPress} style={{ padding: wp(2) }}>
           <ChevronRightIcon size={hp(4)} color="gray" />
         </TouchableOpacity>
       </Animated.View>
     </Pressable>
   );
 });
+export { ExerciseCard };

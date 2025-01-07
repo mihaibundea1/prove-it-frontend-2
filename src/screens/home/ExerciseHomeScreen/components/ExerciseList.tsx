@@ -1,6 +1,6 @@
-import React, { memo, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import React, { memo, useCallback, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Platform } from 'react-native';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { AdjustmentsHorizontalIcon } from "react-native-heroicons/outline";
 import { Exercise } from '@/types/exercise.types';
 import { ExerciseCard } from './ExerciseCard';
@@ -24,8 +24,12 @@ export const ExerciseList: React.FC<ExerciseListProps> = memo(({
     item?.id?.toString() || Math.random().toString()
   , []);
 
+  const selectedExerciseIds = useMemo(() => 
+    new Set(selectedExercises.map(ex => ex.id))
+  , [selectedExercises]);
+
   const renderExerciseCard = useCallback(({ item }: { item: Exercise }) => {
-    const isSelected = selectedExercises?.some(ex => ex.id === item.id);
+    const isSelected = selectedExerciseIds.has(item.id);
     return (
       <ExerciseCard
         exercise={item}
@@ -34,7 +38,13 @@ export const ExerciseList: React.FC<ExerciseListProps> = memo(({
         isSelected={isSelected}
       />
     );
-  }, [selectedExercises, onExercisePress, onExerciseInfo]);
+  }, [selectedExerciseIds, onExercisePress, onExerciseInfo]);
+
+  const getItemLayout = useCallback((_ : any, index: number) => ({
+    length: hp(8), // Adjust based on your ExerciseCard height
+    offset: hp(8) * index,
+    index,
+  }), []);
 
   if (!exercises?.length) {
     return (
@@ -60,13 +70,19 @@ export const ExerciseList: React.FC<ExerciseListProps> = memo(({
         data={exercises}
         renderItem={renderExerciseCard}
         keyExtractor={keyExtractor}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={15}
+        removeClippedSubviews={Platform.OS === 'android'}
+        maxToRenderPerBatch={30}
         updateCellsBatchingPeriod={50}
-        initialNumToRender={10}
+        initialNumToRender={30}
         windowSize={7}
-        showsVerticalScrollIndicator={true}
+        getItemLayout={getItemLayout}
+        showsVerticalScrollIndicator={false}
         onEndReachedThreshold={0.5}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+          autoscrollToTopThreshold: 10
+        }}
       />
     </View>
   );
