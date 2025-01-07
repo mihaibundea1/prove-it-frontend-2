@@ -26,10 +26,11 @@ export type TabParamList = {
 export type HomeStackParamList = {
   HomeScreen: undefined;
   ExerciseHomeScreen: undefined;
-  AiSuggestionsScreen: undefined;
-  StartWorkoutScreen: undefined;
-  Questions: undefined;
-  AllWorkoutsScreen: undefined;
+  ExerciseDetailsScreen: { exerciseId: string }; // Make sure to import Exercise type
+  // AiSuggestionsScreen: undefined;
+  // StartWorkoutScreen: undefined;
+  // Questions: undefined;
+  // AllWorkoutsScreen: undefined;
 };
 
 export type FeedStackParamList = {

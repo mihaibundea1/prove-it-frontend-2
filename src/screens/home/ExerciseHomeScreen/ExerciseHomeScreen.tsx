@@ -12,12 +12,13 @@ import { FilterModal } from './components/FilterModal/index';
 import { CreateWorkoutButton } from '@/components/shared/CreateWorkoutButton';
 import { OverlayLoading } from '@/components/shared/OverlayLoading';
 import { Filters } from '@/services/api/endpoints/exercise/types/exercise.types';
+import { HomeStackScreenProps }  from '@/navigation/types/navigationTypes';
 
 export const ExerciseHomeScreen: React.FC = () => {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeStackScreenProps<'HomeScreen'>['navigation']>();
 
   const {
     exercisesTypes,
@@ -41,7 +42,7 @@ export const ExerciseHomeScreen: React.FC = () => {
   }, [toggleExercise]);
 
   const handleExerciseInfo = useCallback((exercise: Exercise) => {
-    // navigation.navigate('ExerciseDetailsScreen', { exerciseId: exercise.id });
+    navigation.navigate('ExerciseDetailsScreen', { exerciseId: exercise.id });
   }, [navigation]);
 
   const handleFilterApply = useCallback((newFilters: Filters) => {
