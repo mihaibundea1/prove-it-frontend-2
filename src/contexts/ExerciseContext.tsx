@@ -71,7 +71,7 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
       // console.log("Fetched exercises:", exercisesResponse);
   
       // Access the 'data' directly since it's already typed correctly
-      const exercises = parseExercises(exercisesResponse.data); // Fallback to empty array if data is null or undefined
+      const exercises = parseExercises(exercisesResponse);
       updateState({
         allExercises: exercises,
         exercisesTypes: exercises, // Assuming exercisesTypes should be the same as allExercises
@@ -152,7 +152,7 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
   }, [fetchAllExercises, getSelectedExercises, handleError, updateState]);
 
   useEffect(() => {
-    console.log('Initializing exercises...');
+    // console.log('Initializing exercises...');
     initializeExercises();
 
     return () => {

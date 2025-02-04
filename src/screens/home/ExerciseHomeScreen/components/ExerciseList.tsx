@@ -24,6 +24,9 @@ export const ExerciseList: React.FC<ExerciseListProps> = memo(({
     item?.id?.toString() || Math.random().toString()
   , []);
 
+  // console.log('Exercises length:', exercises?.length);
+  // console.log('Selected Exercises length:', selectedExercises?.length);
+
   const selectedExerciseIds = useMemo(() => 
     new Set(selectedExercises.map(ex => ex.id))
   , [selectedExercises]);
