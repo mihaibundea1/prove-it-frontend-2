@@ -5,6 +5,8 @@ import { ExerciseHomeScreen } from '@/screens/home/ExerciseHomeScreen/ExerciseHo
 import ExerciseDetailsScreen from '@/screens/home/ExerciseDetailsScreen/ExerciseDetailsScreen';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
 import { HomeStackParamList } from '@/navigation/types/navigationTypes';
+import { CreateWorkoutScreen } from '@/screens/workout/CreateWorkoutScreen/CreateWorkoutScreen'; // Import the new screen
+
 
 const Stack = createStackNavigator<HomeStackParamList>();
 
@@ -15,6 +17,8 @@ const HomeStack = () => {
         <Stack.Screen name="HomeScreen" component={HomeScreen} />
         <Stack.Screen name="ExerciseHomeScreen" component={ExerciseHomeScreen} />
         <Stack.Screen name="ExerciseDetailsScreen" component={ExerciseDetailsScreen} />
+        <Stack.Screen name="CreateWorkoutScreen" component={CreateWorkoutScreen} />
+
       </Stack.Navigator>
     </ExerciseProvider>
   );

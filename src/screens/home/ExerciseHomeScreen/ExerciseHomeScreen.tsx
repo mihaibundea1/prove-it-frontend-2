@@ -82,7 +82,7 @@ export const ExerciseHomeScreen: React.FC = () => {
 
       <CreateWorkoutButton
         selectedCount={selectedExercises.length}
-        onPress={() => navigation.navigate('CreateWorkoutScreen' as never)}
+        onPress={() => navigation.navigate('CreateWorkoutScreen')}
       />
     </View>
   );
