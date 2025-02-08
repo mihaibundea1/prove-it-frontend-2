@@ -27,6 +27,7 @@ export type HomeStackParamList = {
   HomeScreen: undefined;
   ExerciseHomeScreen: undefined;
   ExerciseDetailsScreen: { exerciseId: string }; // Make sure to import Exercise type
+  CreateWorkoutScreen: undefined; // <-- Added new screen here
   // AiSuggestionsScreen: undefined;
   // StartWorkoutScreen: undefined;
   // Questions: undefined;
