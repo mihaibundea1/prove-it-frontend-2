@@ -23,30 +23,27 @@ const ExerciseDetailsScreen: React.FC<ExerciseDetailsScreenProps> = ({ route, na
     const [exercise, setExercise] = React.useState<Exercise | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
-  
+
     const isSelected = selectedExercises.some(ex => ex.id === exerciseId);
     const images = exercise?.images || [];
     const carouselHeight = hp(40);
-  
+
     React.useEffect(() => {
-      const loadExerciseDetails = async () => {
-        try {
-          const details = await fetchExerciseDetails(exerciseId);
-          if (details) {
-            setExercise(details);
-          } else {
+        const loadExerciseDetails = async () => {
+          try {
+            const details = await fetchExerciseDetails(exerciseId);
+            console.log(details, "details in screen");
+            details ? setExercise(details) : setError('Failed to load exercise details');
+          } catch (err) {
             setError('Failed to load exercise details');
+            console.error('Error:', err);
+          } finally {
+            setLoading(false);
           }
-        } catch (err) {
-          console.error('Error loading exercise details:', err);
-          setError('Failed to load exercise details');
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      loadExerciseDetails();
-    }, [exerciseId, fetchExerciseDetails]);
+        };
+    
+        loadExerciseDetails();
+      }, [exerciseId, fetchExerciseDetails]);
 
     if (loading) {
         return (
@@ -123,7 +120,7 @@ const ExerciseDetailsScreen: React.FC<ExerciseDetailsScreenProps> = ({ route, na
 
             <ActionButton
                 isSelected={isSelected}
-                onPress={() => toggleExercise(exerciseDataForWorkout)}
+                onPress={() => toggleExercise(exercise)} 
             />
         </View>
     );

@@ -20,6 +20,7 @@ export const ExerciseHomeScreen: React.FC = () => {
 
   const navigation = useNavigation<HomeStackScreenProps<'HomeScreen'>['navigation']>();
 
+
   const {
     exercisesTypes,
     allExercises,
@@ -28,7 +29,7 @@ export const ExerciseHomeScreen: React.FC = () => {
     error,
     toggleExercise,
     applyFilters
-  } = useExercises();
+  } = useExercises();  
 
   const filteredExercises = useMemo(() => {
     if (!searchQuery) return allExercises;

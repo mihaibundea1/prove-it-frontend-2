@@ -45,6 +45,24 @@ export class CacheManager {
         this.initialize();
     }
 
+    async debugDatabase(): Promise<void> {
+        const db = await this.dbPromise;
+        try {
+          const cacheEntries = await db.getAllAsync<{ key: string; value: string; timestamp: number }>(
+            `SELECT * FROM cache`
+          );
+          // Afișează structura primei intrări (dacă există)
+          if (cacheEntries.length > 0) {
+            console.log("Structura primei intrări în cache:");
+          } else {
+            console.log("Nu există intrări în cache.");
+          }
+        } catch (error) {
+          console.error("Error debugging database:", error);
+        }
+      }
+    
+
     // Instanța unică (Singleton)
     public static getInstance(config?: Partial<CacheConfig>, syncData?: SyncDataFunction): CacheManager {
         if (!CacheManager.instance) {

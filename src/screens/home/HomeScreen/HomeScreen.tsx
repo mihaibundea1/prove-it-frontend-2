@@ -1,17 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SafeAreaView, ScrollView, Alert, RefreshControl } from 'react-native';
+import { View, Text, SafeAreaView, ScrollView, Alert, RefreshControl, Button } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import type { Workout } from '@/types/workout.types'; // Import the shared Workout type
 import QuickActions from './components/QuickActions';
 import QuickStats from './components/QuickStats';
 import WorkoutHistory from './components/WorkoutHistory';
 // import OverlayLoading from '@/components/OverlayLoading';
+import { CacheManager } from '@/services/cache/CacheManager';
+
 
 interface WorkoutHookReturn {
   handleGetWorkoutHistory: (userId: string) => Promise<void>;
   historyData: Workout[]; // Use the imported Workout type
   error: Error | null;
 }
+
+const debugDatabase = async () => {
+  await CacheManager.getInstance().debugDatabase();
+  console.log("Debugging database...");
+
+};
 
 const useWorkout = (): WorkoutHookReturn => {
   // Mock implementation of the workout hook
@@ -73,6 +81,7 @@ const HomeScreen: React.FC = () => {
           
           <QuickActions />
           <QuickStats />
+          <Button title="Debug Database" onPress={debugDatabase} color="red" />
           <WorkoutHistory workouts={historyData} />
         </View>
       </ScrollView>

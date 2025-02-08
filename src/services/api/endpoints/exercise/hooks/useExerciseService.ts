@@ -60,11 +60,13 @@ export const useExerciseService = () => {
   const fetchExerciseDetails = async (exerciseId: string): Promise<ApiResponse<Exercise>> => {
     setLoading(true);
     try {
+      console.log(exerciseId, "aici");
       const cacheKey = CACHE_KEYS.EXERCISE_DETAILS(exerciseId);
       const cachedDetails = await cacheManager.get<Exercise>(cacheKey);
-      
+      const parsed_cachedDetails = JSON.parse(JSON.stringify(cachedDetails));
+      console.log(cachedDetails, "cacheddetails"); // Print the cachedDetails
       if (cachedDetails) {
-        return { data: cachedDetails, status: 200 };
+        return { data: parsed_cachedDetails, status: 200 };
       }
 
       const response = await serviceRef.current.fetchExerciseDetails(exerciseId);
