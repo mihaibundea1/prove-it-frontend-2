@@ -4,7 +4,7 @@ interface AppConfig {
   }
   
   const ENV = {
-    apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    apiUrl: process.env.EXPO_PUBLIC_API_URL, 
   } as const;
   
   // Validare pentru a ne asigura că toate variabilele de mediu necesare există

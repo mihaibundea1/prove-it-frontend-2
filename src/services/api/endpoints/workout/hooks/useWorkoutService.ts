@@ -1,138 +1,213 @@
-// services/api/endpoints/workout/hooks/useWorkoutService.ts
-import { useRef, useState, useEffect, useCallback } from 'react';
-import { WorkoutService } from '../WorkoutService';
-import { WorkoutState, WorkoutContextState } from '../types/workout.types';
-import { useAuth } from '@clerk/clerk-expo';
+import { useState, useRef } from "react";
+import { WorkoutService } from "../WorkoutService";
+import { useAuth } from "@clerk/clerk-expo";
+import {
+  Workout,
+  UserWorkouts,
+  CompletedWorkout,
+  ScheduledWorkout,
+  PredefinedWorkout,
+} from "../types/workout.types";
+import { ApiResponse } from "@/types/api.types";
 
 export const useWorkoutService = () => {
   const { getToken } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const serviceRef = useRef(new WorkoutService(getToken));
-  const [state, setState] = useState<WorkoutContextState>({
-    activeWorkout: null,
-    duration: 0,
-    volume: 0,
-    sets: 0,
-    isWorkoutActive: false,
-  });
 
-  useEffect(() => {
-    loadWorkoutState();
-    return () => {
-      serviceRef.current.dismissAllNotifications();
-    };
-  }, []);
-
-  const calculateElapsedTime = useCallback((workout: WorkoutState | null): number => {
-    if (!workout?.startTime) return 0;
-    
-    const currentTime = new Date();
-    const startTime = new Date(workout.startTime);
-    return Math.floor((currentTime.getTime() - startTime.getTime()) / 1000);
-  }, []);
-  
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (state.activeWorkout && !state.activeWorkout.pauseTime) {
-      interval = setInterval(() => {
-        const elapsedTime = calculateElapsedTime(state.activeWorkout);
-        updateWorkoutState({ duration: elapsedTime });
-        updateNotification(elapsedTime);
-      }, 1000);
+  const handleWorkoutOperation = async <T>(
+    operation: () => Promise<ApiResponse<T>>
+  ): Promise<T | null> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await operation();
+      if (response.error) {
+        setError(response.error);
+        return null;
+      }
+      return response.data || null;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to perform operation";
+      setError(message);
+      return null;
+    } finally {
+      setIsLoading(false);
     }
-  
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [state.activeWorkout, calculateElapsedTime]);
+  };
 
-  const loadWorkoutState = async (): Promise<void> => {
-    const workout = await serviceRef.current.loadWorkoutState();
-    if (workout) {
-      const currentTime = new Date();
-      const elapsedTime = Math.floor(
-        (currentTime.getTime() - new Date(workout.startTime).getTime()) / 1000
+  const handleWorkoutOperationWithSave = async <T>(
+    operation: () => Promise<ApiResponse<T>>,
+    setState: (data: T) => void
+  ): Promise<T | null> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await operation();
+      if (response.error) {
+        setError(response.error);
+        return null;
+      }
+      if (response.data) {
+        setState(response.data); // Set data directly to context
+      }
+      return response.data || null;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to perform operation"
       );
-      setState(prev => ({
-        ...prev,
-        activeWorkout: workout,
-        duration: elapsedTime,
-        isWorkoutActive: true,
-      }));
-      updateNotification(elapsedTime);
+      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateWorkoutState = (updates: Partial<WorkoutContextState>): void => {
-    setState(prev => ({ ...prev, ...updates }));
+  const getCompletedWorkouts = async (userId: string) => {
+    return handleWorkoutOperation<CompletedWorkout[]>(() =>
+      serviceRef.current.getCompletedWorkouts(userId)
+    );
   };
 
-  const updateNotification = async (time: number, isPaused = false): Promise<void> => {
-    await serviceRef.current.showNotification({
-      title: isPaused ? 'Workout Paused' : 'Workout in Progress',
-      body: `Duration: ${serviceRef.current.formatDuration(time)}`,
-    });
+  const getScheduledWorkouts = async (userId: string) => {
+    return handleWorkoutOperation<ScheduledWorkout[]>(() =>
+      serviceRef.current.getScheduledWorkouts(userId)
+    );
   };
 
-  const startWorkout = async (): Promise<void> => {
-    const newWorkout: WorkoutState = {
-      id: Date.now().toString(),
-      startTime: new Date().toISOString(),
-      exercises: [],
-    };
-
-    await serviceRef.current.saveWorkoutState(newWorkout);
-    updateWorkoutState({
-      activeWorkout: newWorkout,
-      isWorkoutActive: true,
-    });
-    await updateNotification(0);
+  const getSavedWorkouts = async (userId: string) => {
+    return handleWorkoutOperation<Workout[]>(() =>
+      serviceRef.current.getSavedWorkouts(userId)
+    );
   };
 
-  const pauseWorkout = async (): Promise<void> => {
-    if (state.activeWorkout) {
-      const updatedWorkout = {
-        ...state.activeWorkout,
-        pauseTime: new Date().toISOString(),
-      };
-      await serviceRef.current.saveWorkoutState(updatedWorkout);
-      updateWorkoutState({ activeWorkout: updatedWorkout });
-      await updateNotification(state.duration, true);
-    }
+  // ==================== Saved Workouts ====================
+  const createSavedWorkout = async (
+    workoutData: Omit<Workout, "_id" | "created_at" | "updated_at">
+  ) => {
+    return handleWorkoutOperation<Workout>(() =>
+      serviceRef.current.createSavedWorkout(workoutData)
+    );
   };
 
-  const resumeWorkout = async (): Promise<void> => {
-    if (state.activeWorkout) {
-      const updatedWorkout = {
-        ...state.activeWorkout,
-        startTime: new Date(new Date().getTime() - state.duration * 1000).toISOString(),
-        pauseTime: null,
-      };
-      await serviceRef.current.saveWorkoutState(updatedWorkout);
-      updateWorkoutState({ activeWorkout: updatedWorkout });
-      await updateNotification(state.duration);
-    }
+  const getSavedWorkoutById = async (workoutId: string) => {
+    return handleWorkoutOperation<Workout>(() =>
+      serviceRef.current.getSavedWorkoutById(workoutId)
+    );
   };
 
-  const endWorkout = async (): Promise<void> => {
-    await serviceRef.current.clearWorkoutState();
-    setState({
-      activeWorkout: null,
-      duration: 0,
-      volume: 0,
-      sets: 0,
-      isWorkoutActive: false,
-    });
+  const updateSavedWorkout = async (
+    workoutId: string,
+    updates: Partial<Workout>
+  ) => {
+    return handleWorkoutOperation<Workout>(() =>
+      serviceRef.current.updateSavedWorkout(workoutId, updates)
+    );
   };
+
+  const deleteSavedWorkout = async (workoutId: string) => {
+    return handleWorkoutOperation<void>(() =>
+      serviceRef.current.deleteSavedWorkout(workoutId)
+    );
+  };
+
+  // ==================== Scheduled Workouts ====================
+
+  const createScheduledWorkout = async (workoutData: ScheduledWorkout) => {
+    const { _id, created_at, updated_at, ...sanitizedWorkoutData } =
+      workoutData as ScheduledWorkout;
+    return handleWorkoutOperation<ScheduledWorkout>(() =>
+      serviceRef.current.createScheduledWorkout(sanitizedWorkoutData)
+    );
+  };
+
+  const getScheduledWorkoutById = async (workoutId: string) => {
+    return handleWorkoutOperation<ScheduledWorkout>(() =>
+      serviceRef.current.getScheduledWorkoutById(workoutId)
+    );
+  };
+
+  const updateScheduledWorkout = async (
+    workoutId: string,
+    updates: Partial<ScheduledWorkout>
+  ) => {
+    return handleWorkoutOperation<ScheduledWorkout>(() =>
+      serviceRef.current.updateScheduledWorkout(workoutId, updates)
+    );
+  };
+
+  const deleteScheduledWorkout = async (workoutId: string) => {
+    return handleWorkoutOperation<void>(() =>
+      serviceRef.current.deleteScheduledWorkout(workoutId)
+    );
+  };
+
+  // ==================== Completed Workouts ====================
+
+  const createCompletedWorkout = async (
+    workoutData: Omit<CompletedWorkout, "_id" | "created_at" | "updated_at">
+  ) => {
+    return handleWorkoutOperation<CompletedWorkout>(() =>
+      serviceRef.current.createCompletedWorkout(workoutData)
+    );
+  };
+
+  const getCompletedWorkoutById = async (workoutId: string) => {
+    return handleWorkoutOperation<CompletedWorkout>(() =>
+      serviceRef.current.getCompletedWorkoutById(workoutId)
+    );
+  };
+
+  const updateCompletedWorkout = async (
+    workoutId: string,
+    updates: Partial<CompletedWorkout>
+  ) => {
+    return handleWorkoutOperation<CompletedWorkout>(() =>
+      serviceRef.current.updateCompletedWorkout(workoutId, updates)
+    );
+  };
+
+  const deleteCompletedWorkout = async (workoutId: string) => {
+    return handleWorkoutOperation<void>(() =>
+      serviceRef.current.deleteCompletedWorkout(workoutId)
+    );
+  };
+
+  const getPredefinedWorkouts = async () => {
+    return handleWorkoutOperation<PredefinedWorkout[]>(() =>
+      serviceRef.current.getPredefinedWorkouts().then(response => ({
+        ...response,
+        data: response.data ? [response.data] : null,
+      }))
+    );
+  };
+
+  // ==================== Return All Methods ====================
 
   return {
-    ...state,
-    startWorkout,
-    pauseWorkout,
-    resumeWorkout,
-    endWorkout,
-    formatDuration: serviceRef.current.formatDuration,
-    setVolume: (volume: number) => updateWorkoutState({ volume }),
-    setSets: (sets: number) => updateWorkoutState({ sets }),
+    isLoading,
+    error,
+    // Saved Workouts
+    createSavedWorkout,
+    getSavedWorkouts,
+    getSavedWorkoutById,
+    updateSavedWorkout,
+    deleteSavedWorkout,
+    // Scheduled Workouts
+    createScheduledWorkout,
+    getScheduledWorkouts,
+    getScheduledWorkoutById,
+    updateScheduledWorkout,
+    deleteScheduledWorkout,
+    // Completed Workouts
+    createCompletedWorkout,
+    getCompletedWorkouts,
+    getCompletedWorkoutById,
+    updateCompletedWorkout,
+    deleteCompletedWorkout,
+
+    // Predefined Workouts
+    getPredefinedWorkouts,
   };
 };

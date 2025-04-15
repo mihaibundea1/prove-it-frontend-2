@@ -3,6 +3,14 @@
 # dependencies
 node_modules/
 
+# build
+android/
+ios/
+web-build/
+
+credentials.json
+package-lock.json
+
 # Expo
 .expo/
 dist/
@@ -35,3 +43,5 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+package-lock.json/

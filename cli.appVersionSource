@@ -1,0 +1,5 @@
+"cli": {
+  "appVersionSource": "local"  // or "local" depending on your preference
+}
+// remote will use the version set in your Expo project settings.
+// local  will use the version specified in the app.json file itself.

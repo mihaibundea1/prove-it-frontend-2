@@ -15,6 +15,7 @@ import { useSignUp } from '@clerk/clerk-expo';
 import { AuthStackScreenProps } from '../../navigation/types/navigationTypes';
 import { InputField } from '../../components/shared/InputField';
 import { useUserService } from '@/services/api/endpoints/user/hooks/useUserService';
+import LoadingOverlay from '@/components/shared/LoadingOverlay';
 
 const VerifyCodeScreen: React.FC<AuthStackScreenProps<"VerifyCode">> = ({ navigation }) => {
   const signUpData = useSignUp();
@@ -67,7 +68,7 @@ const VerifyCodeScreen: React.FC<AuthStackScreenProps<"VerifyCode">> = ({ naviga
       await signUpData.setActive({ session: sessionToken });
       const registrationResult = await userService.registerUser(userId);
 
-      if (registrationResult.error) {
+      if (!registrationResult) {
         Alert.alert(
           'Warning',
           'Account created but profile setup failed. Please try updating your profile later.'
@@ -111,6 +112,7 @@ const VerifyCodeScreen: React.FC<AuthStackScreenProps<"VerifyCode">> = ({ naviga
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1"
     >
+      <LoadingOverlay />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
           className="flex-1 bg-white"
@@ -122,7 +124,7 @@ const VerifyCodeScreen: React.FC<AuthStackScreenProps<"VerifyCode">> = ({ naviga
             </Text>
 
             <Text className="text-gray-600 mb-8">
-              Enter the verification code sent to your email
+              Enter the verification code sent to your email, check the spam folder as well
             </Text>
 
             <View className="space-y-4">

@@ -1,89 +1,63 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { useNavigation } from '@react-navigation/native';
-import { Exercise } from '@/types/exercise.types';
-import { useExercises } from '@/contexts/ExerciseContext';
-import { Header } from './components/Header';
-import { SearchBar } from './components/SearchBar';
-import { ExerciseList } from './components/ExerciseList';
-import { FilterModal } from './components/FilterModal/index';
-import { CreateWorkoutButton } from '@/components/shared/CreateWorkoutButton';
-import { OverlayLoading } from '@/components/shared/OverlayLoading';
-import { Filters } from '@/services/api/endpoints/exercise/types/exercise.types';
-import { HomeStackScreenProps }  from '@/navigation/types/navigationTypes';
+import React, { useState, useCallback } from 'react';
+import { View, SafeAreaView, Platform, Text } from 'react-native';
+import { TabView, TabBar } from 'react-native-tab-view';
+import { ExercisesTab } from './ExercisesTab';
+import { WorkoutsTab } from './WorkoutsTab';
+
 
 export const ExerciseHomeScreen: React.FC = () => {
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [index, setIndex] = useState(0); // default to first tab
+  const [routes] = useState([
+    { key: 'exercises', title: 'Exercises' },
+    { key: 'workouts', title: 'Workouts' },
+  ]);
 
-  const navigation = useNavigation<HomeStackScreenProps<'HomeScreen'>['navigation']>();
-
-
-  const {
-    exercisesTypes,
-    allExercises,
-    selectedExercises,
-    loadingExercises,
-    error,
-    toggleExercise,
-    applyFilters
-  } = useExercises();  
-
-  const filteredExercises = useMemo(() => {
-    if (!searchQuery) return allExercises;
-    return allExercises.filter(exercise =>
-      exercise.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [allExercises, searchQuery]);
-
-  const handleExercisePress = useCallback((exercise: Exercise) => {
-    toggleExercise(exercise);
-  }, [toggleExercise]);
-
-  const handleExerciseInfo = useCallback((exercise: Exercise) => {
-    navigation.navigate('ExerciseDetailsScreen', { exerciseId: exercise.id });
-  }, [navigation]);
-
-  const handleFilterApply = useCallback((newFilters: Filters) => {
-    applyFilters(newFilters);
-  }, [applyFilters]);
+  const renderScene = useCallback(({ route }: { route: { key: string } }) => {
+    switch (route.key) {
+      case 'exercises':
+        return <ExercisesTab />;
+      case 'workouts':
+        return <WorkoutsTab />;
+      default:
+        return null;
+    }
+  }, []);
 
   return (
-    <View className="flex-1 bg-white">
-      <StatusBar style="dark" />
-      <Header />
-      <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-
-      {/* Render exercises */}
-      <ExerciseList
-        exercises={filteredExercises}
-        selectedExercises={selectedExercises}
-        onExercisePress={handleExercisePress}
-        onExerciseInfo={handleExerciseInfo}
-        onFilterPress={() => setFilterModalVisible(true)}
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+      <TabView
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        lazy
+        renderLazyPlaceholder={() => (
+          <View className="flex-1 items-center justify-center bg-white">
+            <Text>Loading...</Text>
+          </View>
+        )}
+        renderTabBar={(props) => (
+          <TabBar
+            {...props}
+            indicatorStyle={{ backgroundColor: '#3B82F6' }}
+            style={[
+              { backgroundColor: 'white' },
+              Platform.OS === 'ios' && { paddingTop: 20 },
+            ]}
+            labelStyle={{
+              color: '#1F2937',
+              fontFamily: 'Inter-SemiBold',
+              fontSize: 14,
+            }}
+            activeColor="#3B82F6"
+            inactiveColor="#6B7280"
+            pressColor="transparent"
+          />
+        )}
+        sceneContainerStyle={{
+          paddingTop: Platform.OS === 'ios' ? 16 : 0,
+        }}
       />
 
-      <FilterModal
-        visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
-        onApplyFilters={handleFilterApply}
-        filters={{}}
-      />
-
-      <OverlayLoading loading={loadingExercises} />
-
-      {error && (
-        <View className="absolute bottom-8 left-4 right-4 bg-red-500 p-3 rounded-lg">
-          <Text className="text-white">{error}</Text>
-        </View>
-      )}
-
-      <CreateWorkoutButton
-        selectedCount={selectedExercises.length}
-        onPress={() => navigation.navigate('CreateWorkoutScreen')}
-      />
-    </View>
+    </SafeAreaView>
   );
 };

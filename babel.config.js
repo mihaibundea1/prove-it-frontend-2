@@ -1,4 +1,3 @@
-// babel.config.js
 module.exports = function (api) {
   api.cache(true);
   return {
@@ -14,7 +13,8 @@ module.exports = function (api) {
             '@assets': './src/assets'
           }
         }
-      ]
+      ],
+      'react-native-reanimated/plugin', // Ensure this is last
     ],
   };
 };

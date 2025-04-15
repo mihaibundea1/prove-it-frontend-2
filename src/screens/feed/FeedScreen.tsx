@@ -1,144 +1,189 @@
-// import React, { useState, useCallback } from 'react';
-// import { View, Text, FlatList, TouchableOpacity, RefreshControl, StatusBar, Image } from 'react-native';
-// import { useNavigation } from '@react-navigation/native';
-// import { Bell, Search, Dumbbell, Footprints, Apple, PlusCircle, Award, Users } from 'lucide-react-native';
-// import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
-// import PostCard from '../../components/feed/PostCard';
+import React, { useState, useCallback, useEffect } from 'react';
+import { 
+  View, Text, FlatList, TouchableOpacity, RefreshControl, StatusBar, 
+  Image, ActivityIndicator, Animated 
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Bell, Search, PlusCircle, Filter } from 'lucide-react-native';
+import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import PostCard from '../../components/feed/PostCard';
+import { useFeed } from '@/contexts/FeedContext';
+import { Post } from '../../types/feed.types';
+import { LinearGradient } from 'expo-linear-gradient';
+import LoadingOverlay from '@/components/shared/LoadingOverlay';
 
-// const dummyPosts = [
-//   {
-//     _id: '1',
-//     post_id: '1',
-//     credentials_id: 'dummyId',
-//     username: 'user1',
-//     description: 'Morning workout session!',
-//     image_url: 'https://via.placeholder.com/600',
-//     post_date: new Date().toISOString(),
-//     like_count: 10,
-//     comment_count: 3,
-//     likes: [
-//       { like_id: '1', username: 'user2', date: new Date().toISOString() },
-//       { like_id: '2', username: 'user3', date: new Date().toISOString() },
-//     ],
-//     comments: [
-//       { comment_id: '1', username: 'user2', comment: 'Great session!', comment_date: new Date().toISOString() },
-//       { comment_id: '2', username: 'user3', comment: 'Keep it up!', comment_date: new Date().toISOString() },
-//     ],
-//   },
-//   {
-//     _id: '2',
-//     post_id: '2',
-//     credentials_id: 'dummyId',
-//     username: 'user2',
-//     description: 'Leg day grind!',
-//     image_url: 'https://via.placeholder.com/600',
-//     post_date: new Date().toISOString(),
-//     like_count: 5,
-//     comment_count: 1,
-//     likes: [
-//       { like_id: '3', username: 'user1', date: new Date().toISOString() },
-//     ],
-//     comments: [
-//       { comment_id: '3', username: 'user1', comment: 'Nice work!', comment_date: new Date().toISOString() },
-//     ],
-//   },
-// ];
+const FeedScreen = () => {
+  const navigation = useNavigation();
+  const { posts, fetchPosts } = useFeed();
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState('All');
+  
+  // Animation value for the FAB
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-// const FeedScreen = () => {
-//   const navigation = useNavigation();
-//   const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    // Fetch posts when component mounts
+    const loadPosts = async () => {
+      setLoading(true);
+      await fetchPosts();
+      setLoading(false);
+      
+      // Animate the FAB in
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    };
+    
+    loadPosts();
+  }, []);
 
-//   const renderPost = ({ item }) => <PostCard post={item} />;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchPosts();
+    setRefreshing(false);
+  }, [fetchPosts]);
 
-//   const onRefresh = useCallback(() => {
-//     setRefreshing(true);
-//     setTimeout(() => {
-//       setRefreshing(false);
-//     }, 2000);
-//   }, []);
+  const renderPost = ({ item }: { item: Post }) => (
+    <PostCard post={item} />
+  );
+  
+  const filters = ['All', 'Popular', 'Following', 'Trending'];
 
-//   const HeaderComponent = () => (
-//     <View className="bg-[#E63600] rounded-b-3xl shadow-lg pb-4">
-//       <View className="flex-row justify-between items-center px-6 py-4" style={{ marginTop: hp(5) }}>
-//         <View className="flex-row items-center">
-//           <Image
-//             source={{ uri: 'https://via.placeholder.com/100' }}
-//             className="w-10 h-10 rounded-full mr-3"
-//           />
-//           <View>
-//             <Text className="text-xl font-bold text-white">Hi, John!</Text>
-//             <Text className="text-sm text-white opacity-80">Ready to crush your goals?</Text>
-//           </View>
-//         </View>
-//         <View className="flex-row space-x-4">
-//           <TouchableOpacity className="bg-white/20 p-2 rounded-full" onPress={() => navigation.navigate('Search')}>
-//             <Search size={wp(6)} color="white" />
-//           </TouchableOpacity>
-//           <TouchableOpacity className="bg-white/20 p-2 rounded-full">
-//             <Bell size={wp(6)} color="white" />
-//           </TouchableOpacity>
-//         </View>
-//       </View>
-//       <View className="mx-6 my-4 bg-white/10 rounded-xl p-4">
-//         <Text className="text-white text-lg font-semibold mb-2">Today's Goal</Text>
-//         <View className="flex-row justify-between items-center">
-//           <View className="flex-row items-center">
-//             <Dumbbell size={wp(6)} color="white" />
-//             <Text className="text-white ml-2">30 min strength training</Text>
-//           </View>
-//           <TouchableOpacity className="bg-white py-1 px-3 rounded-full">
-//             <Text className="text-[#E63600] font-semibold">Start</Text>
-//           </TouchableOpacity>
-//         </View>
-//       </View>
-//       <View className="flex-row justify-around mt-2">
-//         <CategoryButton icon={<Award size={wp(6)} color="#E63600" />} label="Challenges" />
-//         <CategoryButton icon={<Users size={wp(6)} color="#E63600" />} label="Community" />
-//         <CategoryButton icon={<Apple size={wp(6)} color="#E63600" />} label="Nutrition" />
-//       </View>
-//     </View>
-//   );
+  // Empty state component
+  const EmptyFeed = () => (
+    <View className="flex-1 justify-center items-center p-8">
+      <Image 
+        source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
+        className="w-24 h-24 rounded-full mb-6 opacity-50"
+      />
+      <Text className="text-xl font-bold text-gray-700 mb-2">No posts yet</Text>
+      <Text className="text-gray-500 text-center mb-6">
+        Follow more people or be the first to share a workout!
+      </Text>
+      <TouchableOpacity 
+        className="bg-[#E63600] px-6 py-3 rounded-full"
+        onPress={() => navigation.navigate('NewPost')}
+      >
+        <Text className="text-white font-semibold">Create First Post</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
-//   const CategoryButton = ({ icon, label }) => (
-//     <TouchableOpacity className="items-center">
-//       <View className="bg-white p-3 rounded-2xl shadow-md">
-//         {icon}
-//       </View>
-//       <Text className="text-sm mt-2 font-semibold text-white">{label}</Text>
-//     </TouchableOpacity>
-//   );
+  return (
+    <View className="flex-1 bg-gray-50">
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      
+      {/* Enhanced Top Navigation */}
+      <View className="bg-white pt-12 pb-2 shadow-sm">
+        <View className="px-4 flex-row justify-between items-center mb-3">
+          <View>
+            <Text className="text-2xl font-bold text-gray-800">Feed</Text>
+            <Text className="text-gray-500 text-sm">Discover workouts & progress</Text>
+          </View>
+          
+          <View className="flex-row space-x-3">
+            <TouchableOpacity 
+              className="bg-gray-100 rounded-full p-2"
+              onPress={() => navigation.navigate('SearchScreen')}
+            >
+              <Search size={wp(5.5)} color="#444" />
+            </TouchableOpacity>
+            <TouchableOpacity className="bg-gray-100 rounded-full p-2 relative">
+              <Bell size={wp(5.5)} color="#444" />
+              <View className="absolute top-0 right-0 w-3 h-3 bg-[#E63600] rounded-full border border-white"></View>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Horizontal Filter Tabs */}
+        <FlatList
+          horizontal
+          data={filters}
+          keyExtractor={(item) => item}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: wp(4) }}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              onPress={() => setSelectedFilter(item)}
+              className={`mr-3 px-4 py-2 rounded-full ${
+                selectedFilter === item ? 'bg-[#E63600]' : 'bg-gray-100'
+              }`}
+            >
+              <Text 
+                className={`font-medium ${
+                  selectedFilter === item ? 'text-white' : 'text-gray-700'
+                }`}
+              >
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+          className="pb-3"
+        />
+      </View>
 
-//   return (
-//     <View className="flex-1 bg-gray-50">
-//       <StatusBar barStyle="light-content" />
-//       <FlatList
-//         data={dummyPosts}
-//         renderItem={renderPost}
-//         keyExtractor={(item) => item.post_id.toString()}
-//         ListHeaderComponent={HeaderComponent}
-//         contentContainerStyle={{ paddingBottom: hp(10) }}
-//         onEndReached={() => {}}
-//         onEndReachedThreshold={0.5}
-//         refreshControl={
-//           <RefreshControl
-//             refreshing={refreshing}
-//             onRefresh={onRefresh}
-//             tintColor="#E63600"
-//             title="Pull to refresh..."
-//             titleColor="#E63600"
-//           />
-//         }
-//       />
+      {/* Main Content */}
+      {loading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#E63600" />
+          <Text className="mt-4 text-gray-500">Loading posts...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={{ 
+            paddingTop: hp(1), 
+            paddingBottom: hp(10),
+            flexGrow: 1, // This ensures the empty component fills the space
+          }}
+          onEndReached={() => fetchPosts(posts.length / 10 + 1)}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#E63600"
+              colors={['#E63600']}
+              progressBackgroundColor="#ffffff"
+            />
+          }
+          ListEmptyComponent={<EmptyFeed />}
+          ItemSeparatorComponent={() => <View className="h-3" />}
+        />
+      )}
 
-//       <TouchableOpacity
-//         className="absolute bottom-5 right-5 bg-[#E63600] p-4 rounded-full shadow-lg"
-//         onPress={() => navigation.navigate('NewPost')}
-//       >
-//         <PlusCircle size={wp(8)} color="#fff" />
-//       </TouchableOpacity>
-//     </View>
-//   );
-// };
+      {/* Enhanced Floating Action Button */}
+      <Animated.View 
+        style={{ 
+          position: 'absolute',
+          bottom: 20,
+          right: 20,
+          opacity: fadeAnim,
+          transform: [{ scale: fadeAnim }]
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.navigate('NewPost')}
+          className="shadow-xl"
+        >
+          <LinearGradient
+            colors={['#E63600', '#FF5722']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="p-4 rounded-full"
+          >
+            <PlusCircle size={wp(6)} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
 
-// export default FeedScreen;
+    </View>
+  );
+};
 
+export default FeedScreen;

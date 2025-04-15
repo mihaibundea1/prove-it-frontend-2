@@ -1,27 +1,29 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
 import HomeStack from "./stacks/HomeStack";
 import ProfileStack from "./stacks/ProfileStack";
 import FeedStack from "./stacks/FeedStack";
-
-type BottomTabParamList = {
-  HomeTab: undefined;
-  FeedTab: undefined;
-  ProfileTab: undefined;
-};
+import { useUserContext } from "@/contexts/UserContext";
+import { TabParamList } from "./types/navigationTypes";
 
 // Create the Bottom Tab Navigator
-const BottomTab = createBottomTabNavigator<BottomTabParamList>();
+const BottomTab = createBottomTabNavigator<TabParamList>();
 
 const TabNavigator = () => {
+  const { user } = useUserContext();
+  if (!user) return null;
   return (
     <BottomTab.Navigator
       screenOptions={{
+        tabBarHideOnKeyboard: true, // Use this instead of keyboardHidesTabBar
         tabBarStyle: {
-          height: hp(9),
-          paddingBottom: hp(1),
+          height: hp(10),
+          paddingBottom: hp(3),
           elevation: hp(0),
           shadowOpacity: hp(0),
           backgroundColor: "#FFFFFF",
@@ -57,6 +59,7 @@ const TabNavigator = () => {
       <BottomTab.Screen
         name="ProfileTab"
         component={ProfileStack}
+        initialParams={{ userId: user.clerkId }}
         options={{
           tabBarLabel: "Profile",
           tabBarIcon: ({ color, size }) => (

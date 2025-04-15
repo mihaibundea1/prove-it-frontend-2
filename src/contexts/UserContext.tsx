@@ -1,97 +1,189 @@
-// import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
-// import { useUser as useClerkUser } from '@clerk/clerk-expo';
-// import { UserContextType, User } from '../types/user.types';
-// import { userAPI } from '../services/api/user.api';
-// import { userUtils } from '../utils/user.utils';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useAuth } from "@clerk/clerk-expo";
+import { useFocusEffect } from "@react-navigation/native";
+import { useUserService } from "../services/api/endpoints/user/hooks/useUserService";
+import { UserContextType, User } from "../services/api/endpoints/user/types/user.types";
 
-// const UserContext = createContext<UserContextType | undefined>(undefined);
+// Create a context with proper typing
+const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// interface UserProviderProps {
-//   children: ReactNode;
-// }
+export const UserProvider = ({ children }: { children: React.ReactNode }) => {
+  const { userId: clerkUserId, isLoaded: isAuthLoaded } = useAuth();
+  const userService = useUserService();
+  
+  // Track if initial fetch has been attempted
+  const [initialFetchCompleted, setInitialFetchCompleted] = useState(false);
+  
+  // Refs for managing state and preventing redundant calls
+  const lastAchievementCheck = useRef<number>(0);
+  const isFetchingUser = useRef(false);
+  const lastUserFetch = useRef<number>(0);
+  const achievementCheckTimeout = useRef<NodeJS.Timeout | null>(null);
+  const lastUserData = useRef<User | null>(null);
+  
+  // Constants for controlling frequency
+  const ACHIEVEMENT_CHECK_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+  const USER_FETCH_COOLDOWN = 30 * 1000; // 30 seconds
 
-// export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-//   const { user: clerkUser } = useClerkUser();
-//   const [user, setUser] = useState<User | null>(() => null);
-//   const [isLoading, setIsLoading] = useState<boolean>(false);
-//   const [error, setError] = useState<string | null>(null);
+  // Function to check for user achievements with debounce
+  const checkUserAchievements = useCallback(async () => {
+    if (!userService.user?._id) return;
+    
+    const now = Date.now();
+    if (now - lastAchievementCheck.current < ACHIEVEMENT_CHECK_COOLDOWN) {
+      console.log("Achievement check skipped (cooldown active)");
+      return;
+    }
+    
+    // Clear any pending achievement check
+    if (achievementCheckTimeout.current) {
+      clearTimeout(achievementCheckTimeout.current);
+    }
+    
+    // Schedule the achievement check with a slight delay to allow for batching
+    achievementCheckTimeout.current = setTimeout(async () => {
+      try {
+        console.log("Checking achievements for user:", userService.user?._id);
+        lastAchievementCheck.current = Date.now();
+        // Fix for error #1: Check if _id exists before passing
+        if (userService.user?._id) {
+          await userService.checkAchievements(userService.user._id);
+          // After checking achievements, refresh user data to get updated achievements
+          if (clerkUserId) {
+            await userService.fetchUserProfile(clerkUserId);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking achievements:", error);
+      } finally {
+        achievementCheckTimeout.current = null;
+      }
+    }, 500);
+  }, [userService, clerkUserId]);
 
-//   const refreshUser = useCallback(async (): Promise<void> => {
-//     if (!clerkUser?.id) return;
+  // Main function to fetch user data with deduplication
+  const fetchUserData = useCallback(async (force = false) => {
+    if (!isAuthLoaded || !clerkUserId) return null;
+    
+    const now = Date.now();
+    if (
+      isFetchingUser.current || 
+      (!force && now - lastUserFetch.current < USER_FETCH_COOLDOWN)
+    ) {
+      console.log("User fetch skipped (already fetching or cooldown active)");
+      return userService.user;
+    }
+    
+    try {
+      isFetchingUser.current = true;
+      console.log("Fetching user data for:", clerkUserId);
+      
+      const user = await userService.fetchUserProfile(clerkUserId);
+      lastUserFetch.current = Date.now();
+      
+      // Critical: Check if user data has changed by comparing with our last reference
+      const userChanged = JSON.stringify(user) !== JSON.stringify(lastUserData.current);
+      if (user && userChanged) {
+        console.log("User data changed, triggering achievement check");
+        lastUserData.current = user;
+        
+        // Check achievements when we have new user data that differs from last check
+        await checkUserAchievements();
+      }
+      
+      return user;
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      return null;
+    } finally {
+      isFetchingUser.current = false;
+    }
+  }, [clerkUserId, isAuthLoaded, checkUserAchievements, userService]);
 
-//     setIsLoading(true);
-//     setError(null);
+  // Ensure achievements are checked after initial login
+  useEffect(() => {
+    if (userService.user && !lastAchievementCheck.current) {
+      console.log("Initial achievement check");
+      checkUserAchievements();
+    }
+  }, [userService.user, checkUserAchievements]);
 
-//     try {
-//       const data = await userAPI.fetchUserProfile(clerkUser.id);
-//       const formattedData = userUtils.formatUserData(data);
-//       setUser(formattedData);
-//       await userUtils.persistUserData(formattedData);
-//     } catch (error) {
-//       const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-//       setError(message);
-//       setUser(null);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, [clerkUser]);
+  // Initial data fetch when component mounts
+  useEffect(() => {
+    if (isAuthLoaded && clerkUserId && !initialFetchCompleted) {
+      fetchUserData(true).then(() => {
+        setInitialFetchCompleted(true);
+      });
+    }
+  }, [clerkUserId, isAuthLoaded, initialFetchCompleted, fetchUserData]);
 
-//   const updateProfile = useCallback(async (updates: Partial<User>): Promise<void> => {
-//     if (!clerkUser?.id) return;
+  // Retry mechanism for initial user fetch if needed
+  useEffect(() => {
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 2000; // Start with 2 seconds
+    
+    // Only start retry mechanism if auth is loaded, we have a userId, and no user yet
+    if (isAuthLoaded && clerkUserId && initialFetchCompleted && !userService.user) {
+      console.log("Initial user fetch failed, setting up retry mechanism");
+      
+      const retryInterval = setInterval(async () => {
+        if (userService.user || retryCount >= MAX_RETRIES) {
+          console.log(userService.user ? "User found, stopping retries" : "Max retries reached");
+          clearInterval(retryInterval);
+          return;
+        }
+        
+        console.log(`Retry attempt ${retryCount + 1}/${MAX_RETRIES}`);
+        retryCount++;
+        await fetchUserData(true);
+      }, RETRY_DELAY);
+      
+      return () => clearInterval(retryInterval);
+    }
+  }, [clerkUserId, isAuthLoaded, initialFetchCompleted, userService.user, fetchUserData]);
 
-//     setIsLoading(true);
-//     setError(null);
+  // Refresh user data when screen comes into focus (with reduced frequency)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isAuthLoaded && clerkUserId) {
+        console.log("Screen focused - checking if user refresh is needed");
+        fetchUserData();
+      }
+      return () => {
+        // Clean up any pending achievement check on unfocus
+        if (achievementCheckTimeout.current) {
+          clearTimeout(achievementCheckTimeout.current);
+        }
+      };
+    }, [clerkUserId, isAuthLoaded, fetchUserData])
+  );
 
-//     try {
-//       const { user: updatedUser } = await userAPI.updateProfile(clerkUser.id, updates);
-//       const formattedData = userUtils.formatUserData(updatedUser);
-//       setUser(formattedData);
-//       await userUtils.persistUserData(formattedData);
-//     } catch (error) {
-//       const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-//       setError(message);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   }, [clerkUser]);
+  // Public refresh method exposed through context
+  const refreshUser = useCallback(async (): Promise<User | null> => {
+    if (!clerkUserId) return null;
+    console.log("Manual refresh requested");
+    return await fetchUserData(true);
+  }, [clerkUserId, fetchUserData]);
 
-//   // Sincronizează datele când se schimbă utilizatorul Clerk
-//   useEffect(() => {
-//     if (clerkUser) {
-//       refreshUser();
-//     } else {
-//       setUser(null);
-//       userUtils.persistUserData(null);
-//     }
-//   }, [clerkUser, refreshUser]);
+  // Log errors for better debugging
+  useEffect(() => {
+    if (userService.error) {
+      console.error("UserService error:", userService.error);
+    }
+  }, [userService.error]);
 
-//   // Încearcă să încarce datele salvate local la pornire
-//   useEffect(() => {
-//     const loadStoredData = async () => {
-//       const storedUser = await userUtils.getStoredUserData();
-//       if (storedUser) {
-//         setUser(storedUser);
-//       }
-//     };
+  return (
+    <UserContext.Provider value={{ ...userService, refreshUser }}>
+      {children}
+    </UserContext.Provider>
+  );
+};
 
-//     loadStoredData();
-//   }, []);
-
-//   const value: UserContextType = {
-//     // State
-//     user,
-//     isLoading,
-//     error,
-//     // Actions
-//     refreshUser,
-//     updateProfile
-//   };
-
-//   return (
-//     <UserContext.Provider value={value}>
-//       {children}
-//     </UserContext.Provider>
-//   );
-// };
-
-// export default UserContext;
+export const useUserContext = () => {
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error("useUserContext must be used within a UserProvider");
+  }
+  return context;
+};

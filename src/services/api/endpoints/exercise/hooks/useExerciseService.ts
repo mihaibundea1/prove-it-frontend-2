@@ -3,120 +3,70 @@ import { ExerciseService } from '../ExerciseService';
 import { Exercise } from '../types/exercise.types';
 import { ApiResponse } from '../../../core/types/api.types';
 import { useAuth } from '@clerk/clerk-expo';
-import { CacheManager } from '@/services/cache/CacheManager';
-
-const CACHE_KEYS = {
-  ALL_EXERCISES: 'exercises:all',
-  EXERCISE_DETAILS: (id: string) => `exercises:details:${id}`,
-};
-
-const CACHE_CONFIG = {
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  maxMemorySize: 100, // 100MB
-  maxDiskSize: 1000, // 1GB
-};
 
 export const useExerciseService = () => {
   const { getToken } = useAuth();
   const serviceRef = useRef(new ExerciseService(getToken));
-  const cacheManager = CacheManager.getInstance();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchAllExercises = async (): Promise<ApiResponse<Exercise[]>> => {
+  const fetchAllExercises = async (): Promise<Exercise[]> => {
     setLoading(true);
     try {
-      // Try to get from cache first
-      const cachedExercises = await cacheManager.get<Exercise[]>(CACHE_KEYS.ALL_EXERCISES);
-      if (cachedExercises) {
-        return { data: cachedExercises, status: 200 };
-      }
-
-      // If not in cache, fetch from API
       const response = await serviceRef.current.fetchAllExercises();
-      
-      if (response.data) {
-        // Store in cache with high priority
-        await cacheManager.set(CACHE_KEYS.ALL_EXERCISES, response.data, {
-          priority: 'high',
-          persist: true
-        });
-      }
 
-      return response;
+      // Return only the exercise data, not the whole API response
+      return response.data || [];
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch exercises';
       setError(err instanceof Error ? err : new Error(errorMessage));
-      return { 
-        data: null, 
-        error: errorMessage,
-        status: 500
-      };
+      return []; // Return empty array in case of an error
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchExerciseDetails = async (exerciseId: string): Promise<ApiResponse<Exercise>> => {
+  const fetchExerciseDetails = async (exerciseId: string): Promise<Exercise | null> => {
     setLoading(true);
     try {
-      console.log(exerciseId, "aici");
-      const cacheKey = CACHE_KEYS.EXERCISE_DETAILS(exerciseId);
-      const cachedDetails = await cacheManager.get<Exercise>(cacheKey);
-      const parsed_cachedDetails = JSON.parse(JSON.stringify(cachedDetails));
-      console.log(cachedDetails, "cacheddetails"); // Print the cachedDetails
-      if (cachedDetails) {
-        return { data: parsed_cachedDetails, status: 200 };
-      }
-
       const response = await serviceRef.current.fetchExerciseDetails(exerciseId);
-      
-      if (response.data) {
-        await cacheManager.set(cacheKey, response.data, {
-          priority: 'high',
-          persist: true
-        });
+
+      // If the response doesn't contain valid data, return null
+      if (!response.data || Object.keys(response.data).length === 0) {
+        return null;
       }
 
-      return response;
+      console.log(response.data, 'details in hook');
+      
+      return response.data; // Return only exercise data
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch exercise details';
       setError(err instanceof Error ? err : new Error(errorMessage));
-      return { 
-        data: null, 
-        error: errorMessage,
-        status: 500
-      };
+      return null; // Return null in case of an error
     } finally {
       setLoading(false);
     }
   };
 
-  const getSelectedExercises = async (): Promise<ApiResponse<Exercise[]>> => {
+  const getSelectedExercises = async (): Promise<Exercise[] | null> => {
     try {
-      return await serviceRef.current.getSelectedExercises();
+      const response = await serviceRef.current.getSelectedExercises();
+
+      // Return only the exercise data or null if empty
+      return response.data || null;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get selected exercises';
       setError(err instanceof Error ? err : new Error(errorMessage));
-      return { 
-        data: [], 
-        error: errorMessage,
-        status: 500
-      };
+      return null; // Return null in case of an error
     }
   };
 
-  const saveSelectedExercises = async (exercises: Exercise[]): Promise<ApiResponse<void>> => {
+  const saveSelectedExercises = async (exercises: Exercise[]): Promise<void> => {
     try {
-      return await serviceRef.current.saveSelectedExercises(exercises);
+      await serviceRef.current.saveSelectedExercises(exercises);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save selected exercises';
       setError(err instanceof Error ? err : new Error(errorMessage));
-      return { 
-        data: undefined, 
-        error: errorMessage,
-        status: 500
-      };
     }
   };
 

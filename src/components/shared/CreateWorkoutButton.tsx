@@ -1,4 +1,3 @@
-// CreateWorkoutButton.tsx
 import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 import { Dumbbell } from 'lucide-react-native';
@@ -7,12 +6,15 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 interface CreateWorkoutButtonProps {
   selectedCount: number;
   onPress: () => void;
+  label: string; // Add a label prop
 }
 
 export const CreateWorkoutButton: React.FC<CreateWorkoutButtonProps> = ({ 
   selectedCount, 
-  onPress 
+  onPress,
+  label 
 }) => {
+  // Don't render the button if no exercises are selected
   if (selectedCount === 0) return null;
 
   return (
@@ -22,7 +24,7 @@ export const CreateWorkoutButton: React.FC<CreateWorkoutButtonProps> = ({
     >
       <Dumbbell color="white" size={hp(3)} className="mr-2" />
       <Text className="text-white font-bold" style={{ fontSize: hp(2) }}>
-        Create Workout ({selectedCount})
+        {label} ({selectedCount})
       </Text>
     </TouchableOpacity>
   );

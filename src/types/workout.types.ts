@@ -1,11 +1,11 @@
 // src/types/workout.types.ts
+import type { Exercise } from "./exercise.types";
 export interface Workout {
     id: string;
+    name: string;
     startTime: string;
     pauseTime?: string;
-    exercises: Array<any>; // Define Exercise type based on your needs
-    name: string;
-    createdAt: string;
+    exercises: Exercise[]; 
 }
 
 export interface WorkoutContextState {

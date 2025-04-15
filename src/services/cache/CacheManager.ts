@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
-import { LRUCache } from 'lru-cache';
+import { LRUCache } from 'lru-cache'
 import NetInfo from '@react-native-community/netinfo';
 import { SyncService } from '../api/endpoints/sync/SyncService';
 
@@ -53,7 +53,6 @@ export class CacheManager {
           );
           // Afișează structura primei intrări (dacă există)
           if (cacheEntries.length > 0) {
-            console.log("Structura primei intrări în cache:");
           } else {
             console.log("Nu există intrări în cache.");
           }
@@ -148,6 +147,7 @@ export class CacheManager {
 
     async get<T>(key: string): Promise<T | null> {
         const memoryData = this.memoryCache.get(key);
+        console.log("memoryData", memoryData);
         if (memoryData !== undefined) {
             return memoryData;
         }
@@ -156,6 +156,7 @@ export class CacheManager {
     }
 
     async getFromDisk<T>(key: string): Promise<T | null> {
+        console.log("getFromDisk", key);
         const db = await this.dbPromise;
         try {
             const result = await db.getFirstAsync<{ value: string; timestamp: number }>(
@@ -175,13 +176,13 @@ export class CacheManager {
             try {
                 const data = JSON.parse(result.value);
                 this.memoryCache.set(key, data);
-                return data;
+                return data as T;
             } catch (parseError) {
                 console.error('Cache parsing error:', parseError);
                 return null;
             }
         } catch (error) {
-            console.error('Cache read error:', error);
+            console.log('Cache read error:', error);
             return null;
         }
     }
@@ -205,6 +206,7 @@ export class CacheManager {
         }
 
         if (persist || size >= 1024 * 100) {
+            console.log('Saving to disk:', key, data);
             await this.setToDisk<T>(key, data);
         }
 
@@ -218,12 +220,8 @@ export class CacheManager {
     }
 
     private async setToDisk<T>(key: string, data: T): Promise<void> {
-        console.log('Saving to disk:', key, data);
         const db = await this.dbPromise;
-        const serializedData = JSON.stringify({
-            data,
-            timestamp: Date.now(),
-        });
+        const serializedData = JSON.stringify(data);
 
         await db.runAsync(
             `INSERT OR REPLACE INTO cache (key, value, timestamp) VALUES (?, ?, ?);`,
@@ -240,9 +238,7 @@ export class CacheManager {
     async clear(): Promise<void> {
         const db = await this.dbPromise;
         await db.runAsync(
-            `DELETE FROM cache WHERE 
-        key LIKE 'exercises:%' OR 
-        key LIKE '%_chunk_%';`
+            `DELETE FROM cache`
         );
         this.memoryCache.clear();
     }
@@ -427,8 +423,6 @@ export class CacheManager {
         try {
             // Log the conflict
             console.log(`Conflict detected for key ${key}`);
-            console.log('Local data:', localData);
-            console.log('Server data:', serverData);
 
             // You might want to implement a more sophisticated merge strategy
             // For now, we'll keep server version but also store conflict info

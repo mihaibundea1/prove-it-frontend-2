@@ -12,6 +12,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
   onPress, 
   onInfoPress, 
   isSelected 
+  
 }) => {
   const isHighlightedRef = useRef(false); // Ref for tracking highlight state without causing re-renders
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -28,10 +29,23 @@ const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({
   // Memoize image source to avoid recomputing on each render
   const imageSource = useMemo(() => {
     if (imageLoadError) return logoImage;
-    if (exercise.thumbnail) return { uri: exercise.thumbnail };
-    if (exercise.images?.[0]) return { uri: exercise.images[0] };
+  
+    if (typeof exercise.thumbnail === "string") {
+      return { uri: `data:image/jpeg;base64,${exercise.thumbnail}` };
+    }
+  
+    if (exercise.thumbnail && typeof exercise.thumbnail === "object") {
+      return { uri: exercise.thumbnail.uri };
+    }
+  
+    if (exercise.images?.length) {
+      return { uri: exercise.images[0] };
+    }
+  
     return logoImage;
   }, [exercise.thumbnail, exercise.images, imageLoadError]);
+  
+  
 
   // Combine the animations and memoize it
   const animation = useMemo(() => {

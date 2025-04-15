@@ -14,11 +14,13 @@ import { ExerciseDetailsSection } from './components/ExerciseDetails';
 import { TargetMuscles } from './components/TargetMuscles';
 import { ExerciseInstructions } from './components/ExerciseInstructions';
 import { ActionButton } from './components/ActionButton';
+import { useWorkout } from '@/contexts/WorkoutContext';
 
 type ExerciseDetailsScreenProps = NativeStackScreenProps<HomeStackParamList, 'ExerciseDetailsScreen'>;
 
 const ExerciseDetailsScreen: React.FC<ExerciseDetailsScreenProps> = ({ route, navigation }) => {
     const { exerciseId } = route.params;
+    const { activeWorkout } = useWorkout();
     const { fetchExerciseDetails, selectedExercises, toggleExercise } = useExercises();
     const [exercise, setExercise] = React.useState<Exercise | null>(null);
     const [loading, setLoading] = React.useState(true);
@@ -28,22 +30,27 @@ const ExerciseDetailsScreen: React.FC<ExerciseDetailsScreenProps> = ({ route, na
     const images = exercise?.images || [];
     const carouselHeight = hp(40);
 
+    const hasFetched = React.useRef(false);
+
     React.useEffect(() => {
+        if (hasFetched.current) return; // Previne apelurile ulterioare
+        hasFetched.current = true;
+
         const loadExerciseDetails = async () => {
-          try {
-            const details = await fetchExerciseDetails(exerciseId);
-            console.log(details, "details in screen");
-            details ? setExercise(details) : setError('Failed to load exercise details');
-          } catch (err) {
-            setError('Failed to load exercise details');
-            console.error('Error:', err);
-          } finally {
-            setLoading(false);
-          }
+            try {
+                const details = await fetchExerciseDetails(exerciseId);
+                console.log(details, "details in screen");
+                details ? setExercise(details) : setError('Failed to load exercise details');
+            } catch (err) {
+                setError('Failed to load exercise details');
+                console.error('Error:', err);
+            } finally {
+                setLoading(false);
+            }
         };
-    
+
         loadExerciseDetails();
-      }, [exerciseId, fetchExerciseDetails]);
+    }, []);
 
     if (loading) {
         return (
@@ -118,10 +125,12 @@ const ExerciseDetailsScreen: React.FC<ExerciseDetailsScreenProps> = ({ route, na
                 </TouchableOpacity>
             </ScrollView>
 
+            {!activeWorkout && (
             <ActionButton
                 isSelected={isSelected}
-                onPress={() => toggleExercise(exercise)} 
+                onPress={() => toggleExercise(exercise)}
             />
+        )}
         </View>
     );
 };

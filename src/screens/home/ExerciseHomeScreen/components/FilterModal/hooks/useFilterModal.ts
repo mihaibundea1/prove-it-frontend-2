@@ -1,6 +1,6 @@
-// src/screens/home/ExerciseHomeScreen/components/FilterModal/useFilterModal.tsx
-import { useState, useCallback } from 'react';
-import type { Filters, FilterOptionKey } from '../../types/filter.types';
+// src/screens/home/ExerciseHomeScreen/components/FilterModal/hooks/useFilterModal.ts
+import { useState, useEffect, useCallback } from 'react';
+import { Filters, FilterOptionKey } from '../../types/filter.types';
 
 interface UseFilterModalProps {
   initialFilters: Filters;
@@ -13,33 +13,65 @@ export const useFilterModal = ({
   onApplyFilters,
   onClose
 }: UseFilterModalProps) => {
-  const [localFilters, setLocalFilters] = useState<Filters>(initialFilters);
+  const [localFilters, setLocalFilters] = useState<Filters>(initialFilters || {});
+  
+  // Update local filters when initialFilters change (e.g., when modal reopens)
+  useEffect(() => {
+    setLocalFilters(initialFilters || {});
+  }, [initialFilters]);
 
-  const handleFilterChange = useCallback((key: FilterOptionKey, value: string) => {
-    setLocalFilters((prev: Filters) => {
-      // Dacă valoarea este deja selectată, o deselectăm
-      if (prev[key] === value) {
-        const { [key]: _, ...rest } = prev;
-        return rest;
-      }
-      // Altfel, actualizăm valoarea
-      return { ...prev, [key]: value };
+  // Toggle a filter option in a category (add if not present, remove if already selected)
+  const handleFilterChange = useCallback((category: FilterOptionKey, option: string) => {
+    setLocalFilters(prev => {
+      const currentCategory = (prev[category] || []) as string[];
+      
+      // Check if the option is already selected
+      const isSelected = currentCategory.includes(option);
+      
+      // Toggle the selection
+      const updatedCategory = isSelected
+        ? currentCategory.filter(item => item !== option)
+        : [...currentCategory, option];
+      
+      return {
+        ...prev,
+        [category]: updatedCategory
+      };
     });
   }, []);
 
+  // Reset all filters
   const handleReset = useCallback(() => {
     setLocalFilters({});
   }, []);
 
+  // Reset filters for a specific category
+  const handleResetCategory = useCallback((category: FilterOptionKey) => {
+    setLocalFilters(prev => ({
+      ...prev,
+      [category]: []
+    }));
+  }, []);
+
+  // Apply filters and close modal
   const handleApply = useCallback(() => {
     onApplyFilters(localFilters);
     onClose();
   }, [localFilters, onApplyFilters, onClose]);
 
+  // Get count of active filters
+  const getActiveFilterCount = useCallback(() => {
+    return Object.values(localFilters).reduce((count, filterArray) => {
+      return count + (filterArray?.length || 0);
+    }, 0);
+  }, [localFilters]);
+
   return {
     localFilters,
     handleFilterChange,
     handleReset,
-    handleApply
+    handleResetCategory,
+    handleApply,
+    getActiveFilterCount
   };
 };

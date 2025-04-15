@@ -10,7 +10,7 @@ import DataExportScreen from "../../screens/profile/settings/DataExportScreen";
 import LanguageScreen from "../../screens/profile/settings/LanguageScreen";
 import DeleteAccountScreen from "../../screens/profile/settings/DeleteAccountScreen";
 import HelpCenterScreen from "../../screens/profile/settings/HelpCenterScreen";
-import { SettingsStackParamList } from "../../types/navigation";
+import { SettingsStackParamList } from "@/navigation/types/navigationTypes";
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 

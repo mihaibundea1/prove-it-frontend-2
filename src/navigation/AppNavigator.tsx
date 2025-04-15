@@ -1,47 +1,49 @@
-import React from 'react';
-import { useSession } from '@clerk/clerk-expo';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import AuthStack from './stacks/AuthStack';
-import TabNavigator from './TabNavigator';
+import React, { useState, useEffect } from "react";
+import { useSession } from "@clerk/clerk-expo";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import AuthStack from "./stacks/AuthStack";
+import TabNavigator from "./TabNavigator";
+import IntroScreen from "@/screens/intro/IntroScreen";
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const { isLoaded, session } = useSession();
+  const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
 
-  console.log('AppNavigator State:', {
-    isLoaded,
-    hasSession: !!session,
-    sessionId: session?.id
-  });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsWelcomeVisible(false);
+    }, 2500); // WelcomeScreen va fi vizibil 2.5 secunde
 
-  if (!isLoaded) {
-    console.log("App Navigator: Clerk not loaded");
-    return null; 
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isLoaded || isWelcomeVisible) {
+    return <IntroScreen />;
   }
 
   const initialRoute = session ? "MainTabs" : "AuthStack";
-  console.log("Selecting initial route:", initialRoute);
 
   return (
-    <Stack.Navigator 
-      initialRouteName={initialRoute} 
-      screenOptions={{ 
+    <Stack.Navigator
+      initialRouteName={initialRoute}
+      screenOptions={{
         headerShown: false,
-        gestureEnabled: false 
+        gestureEnabled: false,
       }}
     >
       {session ? (
-        <Stack.Screen 
-          name="MainTabs" 
-          component={TabNavigator} 
-          options={{ animation: 'none' }}
+        <Stack.Screen
+          name="MainTabs"
+          component={TabNavigator}
+          options={{ animation: "none" }}
         />
       ) : (
-        <Stack.Screen 
-          name="AuthStack" 
-          component={AuthStack} 
-          options={{ animation: 'none' }}
+        <Stack.Screen
+          name="AuthStack"
+          component={AuthStack}
+          options={{ animation: "none" }}
         />
       )}
     </Stack.Navigator>

@@ -1,6 +1,9 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { CompositeScreenProps } from "@react-navigation/native";
+import { CompletedWorkout } from "@/services/api/endpoints/workout/types/workout.types";
+import { Workout } from "@/services/api/endpoints/workout/types/workout.types";
+import { Goal } from "@/services/api/endpoints/user/types/user.types";
 
 // Root Stack (Top level)
 export type RootStackParamList = {
@@ -19,27 +22,69 @@ export type AuthStackParamList = {
 export type TabParamList = {
   HomeTab: undefined;
   FeedTab: undefined;
-  ProfileTab: undefined;
+  ProfileTab: { userId: string };
 };
 
 // Individual Stack Params for each tab
 export type HomeStackParamList = {
   HomeScreen: undefined;
-  ExerciseHomeScreen: undefined;
+  ExerciseHomeScreen: undefined; // Make sure to import Exercise type
   ExerciseDetailsScreen: { exerciseId: string }; // Make sure to import Exercise type
   CreateWorkoutScreen: undefined; // <-- Added new screen here
-  // AiSuggestionsScreen: undefined;
+  WorkoutScreen: {
+    workout?: Workout | null;
+  };
+  SeeYourWorkoutsScreen: { _id: string };
+  WorkoutDetailsScreen: { workout: Workout, schedule?: boolean, previousScreen?: string };
+  EditWorkoutScreen: { workout: Workout };
+  CreateAIWorkoutScreen: { schedule: boolean };
+  WorkoutSwipeModal: undefined;
+  ScheduleWorkoutScreen: undefined;
+  ScheduleExistingWorkoutsScreen: undefined;
+  ScheduleDateTimeScreen: { workoutId: string }; // assuming we pass the workout ID
   // StartWorkoutScreen: undefined;
-  // Questions: undefined;
+  QuestionsScreen: undefined;
   // AllWorkoutsScreen: undefined;
+  AllGoalsScreen: { navigation: any };
+  AddGoalScreen: undefined;
+  EditGoalScreen: { goal: Goal };
 };
 
 export type FeedStackParamList = {
   FeedScreen: undefined;
+  ProfileScreen: { userId: string }; // Use the same screen name as in ProfileStack
+  WorkoutScreen: { workout?: Workout }; // Adăugat în FeedStack
+  NewPost: undefined;
+  SearchScreen: undefined;
+  WorkoutDetailsScreen: { workout: Workout, schedule?: boolean, previousScreen?: string };
+  AllRecentWorkouts: {workouts: CompletedWorkout[], isMyProfile: boolean};
+
+
 };
 
 export type ProfileStackParamList = {
-  MyProfileScreen: undefined;
+  ProfileScreen: { userId: string }; // Pass userId as a parameter
+  SettingsStack: { screen: keyof SettingsStackParamList } | undefined;
+  WorkoutScreen: { workout?: Workout }; // Adăugat în FeedStack
+  AllRecentWorkouts: {workouts: CompletedWorkout[], isMyProfile: boolean};
+  AllGoalsScreen: { navigation: any };
+  AddGoalScreen: undefined;
+  EditGoalScreen: { goal: Goal };
+  WorkoutDetailsScreen: { workout: Workout, schedule?: boolean, previousScreen?: string };
+
+};
+
+export type SettingsStackParamList = {
+  SettingsScreen: undefined;
+  EditProfileScreen: undefined;
+  ChangePasswordScreen: undefined;
+  NotificationSettingsScreen: undefined;
+  PrivacySettingsScreen: undefined;
+  SubscriptionScreen: undefined;
+  DataExportScreen: undefined;
+  LanguageScreen: undefined;
+  DeleteAccountScreen: undefined;
+  HelpCenterScreen: undefined;
 };
 
 // Screen Props Types
@@ -64,9 +109,13 @@ export type HomeStackScreenProps<Screen extends keyof HomeStackParamList> =
     TabScreenProps<keyof TabParamList>
   >;
 
+export type ProfileStackScreenProps<
+  Screen extends keyof ProfileStackParamList
+> = NativeStackScreenProps<ProfileStackParamList, Screen>;
+
 // Global declaration for type safety
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList { }
+    interface RootParamList extends RootStackParamList {}
   }
 }

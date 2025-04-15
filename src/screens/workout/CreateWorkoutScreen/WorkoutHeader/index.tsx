@@ -1,42 +1,37 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { View, Text, TouchableOpacity } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import type { StackNavigationProp } from "@react-navigation/stack"
 
 type RootStackParamList = {
   // Define your navigation params here
-};
+}
 
 type WorkoutHeaderProps = {
-  onSave: () => void;
-  isSaving: boolean;
-};
+  onSave: () => void
+  isSaving: boolean
+}
 
 export const WorkoutHeader = ({ onSave, isSaving }: WorkoutHeaderProps) => {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>()
 
   return (
-    <View
-      className="flex-row justify-between items-center border-b border-gray-300"
-      style={{ padding: wp(4), paddingTop: hp(1.5) }}
-    >
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text className={`text-black text-[${hp(2.2)}px]`}>Cancel</Text>
+    <View className="flex-row justify-between items-center bg-white px-4 py-3 border-b border-gray-200">
+      <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
+        <Text className="text-gray-600 text-base">Cancel</Text>
       </TouchableOpacity>
 
-      <Text className={`text-[${hp(2.2)}px] font-bold`}>Create Routine</Text>
+      <View className="flex-1 items-center">
+        <Text className="text-xl font-bold">Create Routine</Text>
+      </View>
 
       <TouchableOpacity
         onPress={onSave}
         disabled={isSaving}
-        className={`${isSaving ? 'bg-gray-500' : 'bg-orange-600'} py-2 px-4 rounded-lg justify-center items-center`}
-        style={{ elevation: 3 }}
+        className={`bg-[#ee4444] px-3 py-2 rounded-lg ${isSaving ? "opacity-50" : ""}`}
       >
-        <Text className={`text-white text-[${hp(2.2)}px] font-medium`}>
-          Save
-        </Text>
+        <Text className="text-white text-base font-semibold">{isSaving ? "Saving..." : "Save"}</Text>
       </TouchableOpacity>
     </View>
-  );
-};
+  )
+}
+

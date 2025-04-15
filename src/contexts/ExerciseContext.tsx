@@ -62,24 +62,24 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
   const initializeExercises = useCallback(async () => {
     if (initialFetchDone.current || pendingUpdateRef.current) return;
     pendingUpdateRef.current = true;
-  
+
     try {
       const [exercisesResponse, selectedResponse] = await Promise.all([
         fetchAllExercises(),
         getSelectedExercises()
       ]);
       // console.log("Fetched exercises:", exercisesResponse);
-  
+
       // Access the 'data' directly since it's already typed correctly
-      const exercises = parseExercises(exercisesResponse);
+      // console.log(exercisesResponse, "exercisesResponse:");
       updateState({
-        allExercises: exercises,
-        exercisesTypes: exercises, // Assuming exercisesTypes should be the same as allExercises
-        selectedExercises: Array.isArray(selectedResponse.data) ? selectedResponse.data : [],
+        allExercises: exercisesResponse,
+        exercisesTypes: exercisesResponse, // Assuming exercisesTypes should be the same as allExercises
+        selectedExercises: Array.isArray(selectedResponse) ? selectedResponse : [],
         loadingExercises: false
       });
       // console.log("allexercises:", exercises);
-  
+
       initialFetchDone.current = true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initialize exercises';
@@ -92,23 +92,24 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
       pendingUpdateRef.current = false;
     }
   }, [fetchAllExercises, getSelectedExercises, onError, updateState]);
-  
 
-  function parseExercises(data: any): Exercise[] {
-    // Ensure data is in the expected structure
-    if (!data || !data.data || !Array.isArray(data.data.data)) {
-      console.error('Unexpected data structure:', data);
+
+  function parseExercises(response: any): Exercise[] {
+    // Începem cu valoarea din response.data
+    let exercises = response?.data || [];
+
+    // Dacă, la final, nu obținem un array, înseamnă că structura nu este cea așteptată
+    if (!Array.isArray(exercises)) {
+      console.error('Structură neașteptată a datelor:', response);
       return [];
     }
-  
-    // Extract the exercises array from the nested structure
-    const exercises = data.data.data;
-  
+
+    // Parcurgem array-ul pentru a construi obiectele de tip Exercise
     return exercises.map((item: any) => ({
       id: item.id,
       title: item.title,
-      images: Array.isArray(item.images) ? item.images : [item.images], // Ensuring images is an array
-      thumbnail: item.thumbnail?.uri || '', // Optional chaining for thumbnail
+      images: Array.isArray(item.images) ? item.images : [item.images],
+      thumbnail: item.thumbnail?.uri || '',
       category: item.category,
       equipment: item.equipment,
       level: item.level,
@@ -117,9 +118,11 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
       primaryMuscles: Array.isArray(item.primaryMuscles) ? item.primaryMuscles : [item.primaryMuscles],
       secondaryMuscles: Array.isArray(item.secondaryMuscles) ? item.secondaryMuscles : [item.secondaryMuscles],
       instructions: Array.isArray(item.instructions) ? item.instructions : [item.instructions],
-      sets: item.sets || [] // Default to an empty array if sets is missing
+      sets: item.sets || [],
+      restTimer: item.restTimer
     }));
-  } 
+  }
+
 
   // Data Loading
   const loadInitialData = useCallback(async () => {
@@ -133,14 +136,14 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
         getSelectedExercises()
       ]);
 
-      if (exercisesResponse.error) {
-        throw new Error(exercisesResponse.error);
+      if (exercisesResponse === null || selectedResponse === null) {
+        throw new Error("Failed to fetch exercises");
       }
 
       updateState({
-        allExercises: exercisesResponse.data || [],
-        exercisesTypes: exercisesResponse.data || [],
-        selectedExercises: selectedResponse.data || [],
+        allExercises: exercisesResponse || [],
+        exercisesTypes: exercisesResponse || [],
+        selectedExercises: selectedResponse || [],
         loadingExercises: false
       });
 
@@ -162,27 +165,62 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
     };
   }, [initializeExercises]);
 
-  // Filter Management
+  // In ExerciseContext.tsx
+
   const applyFilters = useCallback((filters: ExerciseFilters = {}) => {
     setState(prev => {
-      // Ensure allExercises is an array before performing filtering
       const allExercises = Array.isArray(prev.allExercises) ? prev.allExercises : [];
 
+      // No filters? Reset to full list.
       if (!filters || Object.keys(filters).length === 0) {
         return { ...prev, exercisesTypes: allExercises };
       }
 
       const filtered = allExercises.filter(exercise =>
-        Object.entries(filters).every(([key, value]) => {
-          if (!value) return true;
-          const exerciseValue = String(exercise[key as keyof Exercise] || '').toLowerCase();
-          return exerciseValue === value.toLowerCase();
+        Object.entries(filters).every(([key, filterValue]) => {
+          // If no filter for a key, then pass this property.
+          if (
+            filterValue === undefined ||
+            filterValue === null ||
+            (Array.isArray(filterValue) && filterValue.length === 0)
+          ) {
+            return true;
+          }
+
+          let filterOptions: string[] =
+            Array.isArray(filterValue)
+              ? filterValue.map(opt => opt.toLowerCase())
+              : [String(filterValue).toLowerCase()];
+
+          // Special handling for muscle groups, if key is "muscleGroups"
+          if (key === 'muscleGroups') {
+            // Combine primaryMuscles and secondaryMuscles
+            const primary = Array.isArray(exercise.primaryMuscles) ? exercise.primaryMuscles : [];
+            const secondary = Array.isArray(exercise.secondaryMuscles) ? exercise.secondaryMuscles : [];
+            const combinedMuscles = [...primary, ...secondary];
+            return combinedMuscles
+              .map(val => String(val).toLowerCase())
+              .some(val => filterOptions.includes(val));
+          } else {
+            // General handling; if the exercise property is an array...
+            const exerciseProp = exercise[key as keyof Exercise];
+            if (Array.isArray(exerciseProp)) {
+              return exerciseProp
+                .map(val => String(val).toLowerCase())
+                .some(val => filterOptions.includes(val));
+            } else {
+              return filterOptions.includes(String(exerciseProp || '').toLowerCase());
+            }
+          }
         })
       );
 
       return { ...prev, exercisesTypes: filtered };
     });
   }, []);
+
+
+
 
   // Selected Exercise Management
   const handleSelectedExercisesUpdate = useCallback(async (newSelectedExercises: Exercise[]) => {
@@ -196,11 +234,11 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
 
   const toggleExercise = useCallback(async (exercise: Exercise) => {
     if (!exercise?.id) return;
-    
+
     const newSelectedExercises = state.selectedExercises.some(ex => ex.id === exercise.id)
       ? state.selectedExercises.filter(ex => ex.id !== exercise.id)
       : [...state.selectedExercises, { ...exercise, sets: [{ weight: '', reps: '' }] }];
-      
+
     updateState({ selectedExercises: newSelectedExercises });
     await saveSelectedExercises(newSelectedExercises);
   }, [state.selectedExercises, updateState, saveSelectedExercises]);
@@ -270,24 +308,12 @@ export const ExerciseProvider: React.FC<ExerciseProviderProps> = ({
     }
   }, [handleError, saveSelectedExercises, updateState]);
 
-  // Exercise Details Management
-  const getExerciseDetails = useCallback(async (id: string) => {
-    try {
-      const response = await fetchExerciseDetails(id);
-      if (response.error) throw new Error(response.error);
-      return response.data;
-    } catch (error) {
-      handleError(error);
-      return null;
-    }
-  }, [fetchExerciseDetails, handleError]);
-
   const value = {
     ...state,
     loadingExercises: state.loadingExercises || serviceLoading,
     setSelectedExercises: handleSelectedExercisesUpdate,
     applyFilters,
-    fetchExerciseDetails: getExerciseDetails,
+    fetchExerciseDetails,
     toggleExercise,
     clearSelectedExercises,
     addSetToExercise,

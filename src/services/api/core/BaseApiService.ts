@@ -6,8 +6,9 @@ export abstract class BaseApiService {
   protected httpClient: HttpClient;
   protected baseEndpoint: string;
 
-  constructor(baseEndpoint: string, getToken?: () => Promise<string | null>) {
-    this.httpClient = HttpClient.getInstance(getToken); // Pass getToken here
+  constructor(baseEndpoint: string, getToken: () => Promise<string | null>) {
+    // Creează o nouă instanță HttpClient pentru fiecare serviciu
+    this.httpClient = new HttpClient(getToken);
     this.baseEndpoint = baseEndpoint;
   }
 

@@ -8,7 +8,7 @@ export interface Exercise {
     id: string;
     title: string;
     images: string[];
-    thumbnail: string | null;
+    thumbnail?: string | { uri: string } | null | undefined;
     category: string;
     equipment: string;
     level: string;
@@ -17,7 +17,8 @@ export interface Exercise {
     primaryMuscles: string[];
     secondaryMuscles: string[];
     instructions: string[];
-    sets: ExerciseSet[];
+    sets?: ExerciseSet[];
+    restTimer?: string | 'OFF';
 }
 
 export interface RawExerciseData {
@@ -57,8 +58,8 @@ export interface ExerciseContextType {
     addSetToExercise: (exerciseId: string) => void;
     removeSet: (exerciseId: string, setIndex: number) => void;
     updateSet: (
-        exerciseId: string, 
-        setIndex: number, 
+        exerciseId: string,
+        setIndex: number,
         field: 'weight' | 'reps',  // Schimbat de la string la union type specific
         value: string
     ) => void;
@@ -66,12 +67,12 @@ export interface ExerciseContextType {
 
 export interface ExerciseCardProps {
     exercise: {
-      id: string;
-      title: string;
-      thumbnail: string | null;
-      images: string[];
+        id: string;
+        title: string;
+        thumbnail?: string | { uri: string } | null | undefined;
+        images: string[];
     };
     onPress: () => void;
     onInfoPress: () => void;
     isSelected: boolean;
-  }
+}

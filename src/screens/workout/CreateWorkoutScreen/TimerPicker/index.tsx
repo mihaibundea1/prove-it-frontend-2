@@ -1,7 +1,7 @@
-// TimerPicker Component
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, SafeAreaView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+// TimerPicker.tsx
+import React from "react";
+import { View, Text, TouchableOpacity, Modal, SafeAreaView } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 
 export type TimerOption = {
   label: string;
@@ -17,7 +17,7 @@ type TimerPickerProps = {
 };
 
 const generateTimerOptions = (): TimerOption[] => {
-  const options: TimerOption[] = [{ label: 'OFF', value: 'OFF' }];
+  const options: TimerOption[] = [{ label: "OFF", value: "OFF" }];
   for (let i = 5; i <= 60; i += 5) {
     options.push({ label: `${i} sec`, value: `${i} sec` });
   }
@@ -27,25 +27,34 @@ const generateTimerOptions = (): TimerOption[] => {
   return options;
 };
 
-export const TimerPicker = ({ 
+export const TimerPicker = ({
   visible,
   onClose,
   selectedValue,
   onValueChange,
-  options = generateTimerOptions()
+  options = generateTimerOptions(),
 }: TimerPickerProps) => (
   <Modal visible={visible} transparent animationType="slide">
-    <SafeAreaView className="flex-1 justify-center items-center bg-black/50">
-      <View className="bg-white p-5 rounded-xl w-80">
-        <Text className="text-lg mb-2">Select Rest Timer</Text>
-        <Picker selectedValue={selectedValue} onValueChange={onValueChange}>
-          {options.map(option => (
+    <SafeAreaView className="flex-1 justify-end bg-black/50">
+      <View className="bg-white rounded-t-3xl">
+        <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+          <TouchableOpacity onPress={onClose}>
+            <Text className="text-[#ee4444] font-semibold text-lg">Cancel</Text>
+          </TouchableOpacity>
+          <Text className="text-lg font-bold">Rest Timer</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Text className="text-[#ee4444] font-semibold text-lg">Done</Text>
+          </TouchableOpacity>
+        </View>
+        <Picker
+          selectedValue={selectedValue}
+          onValueChange={onValueChange}
+          itemStyle={{ height: 150, color: "#000" }}
+        >
+          {options.map((option) => (
             <Picker.Item key={option.value} label={option.label} value={option.value} />
           ))}
         </Picker>
-        <TouchableOpacity onPress={onClose} className="mt-2">
-          <Text className="text-blue-500 text-center text-lg">Close</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   </Modal>

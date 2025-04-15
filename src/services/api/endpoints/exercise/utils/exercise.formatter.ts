@@ -32,7 +32,8 @@ export const exerciseFormatter = {
       primaryMuscles: this.ensureArray(parsedExercise.primary_muscles),
       secondaryMuscles: this.ensureArray(parsedExercise.secondary_muscles),
       instructions: this.ensureArray(parsedExercise.instructions),
-      sets: []
+      sets: [],
+      restTimer: exercise.restTimer || 'OFF', // Default to 'OFF' if not provided
     };
   }
 };

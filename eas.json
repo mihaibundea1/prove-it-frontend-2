@@ -1,0 +1,29 @@
+{
+  "build": {
+    "production": {
+      "ios": {
+        "distribution": "internal"
+      },
+      "android": {
+        "distribution": "internal",
+        "credentialsSource": "remote",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "$EXPO_PUBLIC_API_URL",
+          "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "$EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY"
+        }
+      }
+    },
+    "preview": {
+      "android": {
+        "credentialsSource": "remote",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "$EXPO_PUBLIC_API_URL",
+          "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "$EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY"
+        }
+      }
+    }
+  },
+  "cli": {
+    "appVersionSource": "remote"
+  }
+}
